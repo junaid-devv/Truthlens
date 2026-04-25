@@ -93,13 +93,18 @@ export default function ProcessingPage() {
     })
       .then((r) => r.json())
       .then((data) => {
+        if (data.error) {
+           sessionStorage.setItem("analysisResult", JSON.stringify({ error: data.error, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
+           setTimeout(() => router.push("/upload"), 500);
+           return;
+        }
         sessionStorage.setItem("analysisResult", JSON.stringify({ ...data, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
         const remaining = Math.max(500, total - (Date.now() - t0));
         setTimeout(() => router.push("/results"), remaining);
       })
       .catch((err) => {
         console.error("Analysis error:", err);
-        sessionStorage.setItem("analysisResult", JSON.stringify({ error: true, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
+        sessionStorage.setItem("analysisResult", JSON.stringify({ error: "An unexpected error occurred during analysis.", analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
         setTimeout(() => router.push("/upload"), 1500);
       });
   }, [analysisId, fileInfo, router]);

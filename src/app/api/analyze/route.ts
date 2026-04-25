@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { HfInference } from '@huggingface/inference';
+import sharp from 'sharp';
 
 // ─── HF Inference client ───────────────────────────────────────────────────────
 // provider: 'hf-inference' is passed explicitly in every SDK call to force the
@@ -15,7 +16,7 @@ const HF_ROUTER = 'https://router.huggingface.co/hf-inference/models';
 
 const MAX_GEMINI_WAIT_MS = 8000;
 
-const GEMINI_MODELS = ['gemini-flash-latest', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+const GEMINI_MODELS = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-flash-latest'];
 
 // ─── Whisper transcription models ─────────────────────────────────────────────
 //
@@ -340,12 +341,26 @@ async function hfZeroShot(
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function base64ToBlob(b64: string): { blob: Blob; mimeType: string; rawBase64: string } {
+function base64ToBlob(b64: string, fileName?: string): { blob: Blob; mimeType: string; rawBase64: string } {
   const [header, data] = b64.split(',');
   const mimeMatch = header.match(/:(.*?);/);
-  const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-  const bytes = Buffer.from(data, 'base64');
-  return { blob: new Blob([bytes], { type: mimeType }), mimeType, rawBase64: data };
+  let mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+
+  // Fallback to extension if MIME is generic
+  if ((mimeType === 'application/octet-stream' || !mimeType) && fileName) {
+    const ext = fileName.toLowerCase().split('.').pop();
+    if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+    else if (ext === 'png') mimeType = 'image/png';
+    else if (ext === 'webp') mimeType = 'image/webp';
+    else if (ext === 'gif') mimeType = 'image/gif';
+    else if (ext === 'mp4') mimeType = 'video/mp4';
+    else if (ext === 'mp3') mimeType = 'audio/mpeg';
+    else if (ext === 'wav') mimeType = 'audio/wav';
+    else if (ext === 'ogg') mimeType = 'audio/ogg';
+  }
+
+  const bytes = Buffer.from(data || b64, 'base64');
+  return { blob: new Blob([bytes], { type: mimeType }), mimeType, rawBase64: data || b64 };
 }
 
 function safeScore(
@@ -440,7 +455,14 @@ export async function POST(req: NextRequest) {
 
     if (!fileData) return NextResponse.json({ error: 'No file data' }, { status: 400 });
 
-    const { rawBase64, mimeType: detectedMime } = base64ToBlob(fileData);
+    const lowerFileName = fileName.toLowerCase();
+    if (lowerFileName.endsWith('.heic') || lowerFileName.endsWith('.heif') || mimeType === 'image/heic') {
+      return NextResponse.json({ 
+        error: 'HEIC format is currently not supported. Please convert your image to JPEG or PNG.' 
+      }, { status: 400 });
+    }
+
+    const { rawBase64, mimeType: detectedMime } = base64ToBlob(fileData, fileName);
     const resolvedMime = mimeType || detectedMime;
     const isAudio = fileType === 'audio' || mimeType.startsWith('audio');
     const isImage = fileType === 'image' || mimeType.startsWith('image');
@@ -559,7 +581,12 @@ export async function POST(req: NextRequest) {
       ) as ArrayBuffer;
 
       tasks.push(
-        hfImageClassify('prithivMLmods/Deep-Fake-Detector-v2-Model', imageBuffer, resolvedMime)
+        sharp(Buffer.from(imageBuffer))
+          .resize(384, 384, { fit: 'fill' })
+          .toBuffer()
+          .then(resizedBuffer => 
+            hfImageClassify('buildborderless/CommunityForensics-DeepfakeDet-ViT', resizedBuffer.buffer as ArrayBuffer, resolvedMime)
+          )
           .then(r => { R.imagePrimary = r; })
           .catch(async e => { 
             console.error('[Pipeline] Image primary ❌', e.message); 
@@ -567,10 +594,15 @@ export async function POST(req: NextRequest) {
               try { R.imagePrimary = await geminiImageClassifyFallback(ai, rawBase64, resolvedMime); }
               catch(err) { console.error('[Pipeline] Gemini primary fallback ❌', err instanceof Error ? err.message : err); }
             }
-          }),
+          })
       );
       tasks.push(
-        hfImageClassify('Ateeqq/ai-vs-human-image-detector', imageBuffer, resolvedMime)
+        sharp(Buffer.from(imageBuffer))
+          .resize(224, 224, { fit: 'fill' })
+          .toBuffer()
+          .then(resizedBuffer => 
+            hfImageClassify('dima806/deepfake_vs_real_image_detection', resizedBuffer.buffer as ArrayBuffer, resolvedMime)
+          )
           .then(r => { R.imageSecondary = r; })
           .catch(async e => { 
             console.error('[Pipeline] Image secondary ❌', e.message); 
@@ -692,10 +724,10 @@ export async function POST(req: NextRequest) {
       transcript: R.transcript ? R.transcript.slice(0, 2000) : null,
       transcript_available: R.transcript !== null,
       image_deepfake_primary: imagePrimary
-        ? { model: 'prithivMLmods/Deep-Fake-Detector-v2-Model', score: imagePrimary.score, label: imagePrimary.label }
+        ? { model: 'buildborderless/CommunityForensics-DeepfakeDet-ViT', score: imagePrimary.score, label: imagePrimary.label }
         : null,
       image_deepfake_secondary: imageSecondary
-        ? { model: 'Ateeqq/ai-vs-human-image-detector', score: imageSecondary.score, label: imageSecondary.label }
+        ? { model: 'dima806/deepfake_vs_real_image_detection', score: imageSecondary.score, label: imageSecondary.label }
         : null,
       audio_deepfake: audioDeepfake
         ? {

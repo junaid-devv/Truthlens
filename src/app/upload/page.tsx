@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   FileAudio,
@@ -55,6 +55,21 @@ export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const res = sessionStorage.getItem("analysisResult");
+    if (res) {
+      try {
+        const parsed = JSON.parse(res);
+        if (parsed.error) {
+          setError(typeof parsed.error === 'string' ? parsed.error : "Analysis failed. Please try again.");
+          sessionStorage.removeItem("analysisResult");
+        }
+      } catch (e) {
+        console.error("Error parsing analysis result:", e);
+      }
+    }
+  }, []);
+
   function getFileIcon(input: File) {
     if (input.type.startsWith("audio")) return FileAudio;
     if (input.type.startsWith("image")) return FileImage;
@@ -65,6 +80,11 @@ export default function UploadPage() {
     setError("");
     if (input.size > MAX_SIZE_MB * 1024 * 1024) {
       setError(`File too large. Max ${MAX_SIZE_MB} MB.`);
+      return;
+    }
+    const name = input.name.toLowerCase();
+    if (name.endsWith('.heic') || name.endsWith('.heif')) {
+      setError("HEIC images are currently not supported. Please convert to JPEG or PNG.");
       return;
     }
     if (!selectedType) {
