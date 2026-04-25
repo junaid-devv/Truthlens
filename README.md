@@ -1,7 +1,5 @@
 # 🔍 TruthLens: Forensic Media Verification Platform
 
-![TruthLens Cover](https://via.placeholder.com/1200x400/071019/1cc7b3?text=TruthLens+-+AI+Deepfake+Detection)
-
 > **Know whether a voice, image, or video was manipulated before you act.**
 
 TruthLens is a high-performance, forensic-grade media verification platform built to combat the rising threat of deepfakes and AI-generated media. Designed for real verification work, it combines signal analysis, context checks, and evidence-backed reporting in a single, intuitive workflow.
@@ -103,9 +101,8 @@ src/
 ## 🤝 Team
 *This project was built for [Insert Hackathon Name].*
 
-- **[Your Name/Handle]** - Role (e.g., Full Stack Developer, UX Designer)
-- **[Team Member 2]** - Role
-- **[Team Member 3]** - Role
+- **Team Name : Dead Code** - Role (e.g., Full Stack Developer, UX Designer)
+- **Leader : Muhammad Junaid** - Role
 
 ---
 
