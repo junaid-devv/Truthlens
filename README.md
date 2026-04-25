@@ -86,18 +86,6 @@ src/
     ├── storage.ts        # Local storage management
     └── types.ts          # Shared TypeScript interfaces
 ```
-
----
-
-## 🔮 What's Next? (Roadmap)
-
-- [ ] **Live API Integrations**: Hook up the simulated analysis engine to real detection APIs (e.g., Hive Moderation, Reality Defender).
-- [ ] **Browser Extension**: Verify media directly on social platforms (Twitter, WhatsApp Web) with a single click.
-- [ ] **Enterprise Dashboards**: Allow teams to collaborate on incident response with shared forensic workspaces.
-- [ ] **Live Audio Interception**: Real-time voice verification for phone calls or Zoom meetings.
-
----
-
 ## 🤝 Team
 *This project was built for [Insert Hackathon Name].*
 
