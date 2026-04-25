@@ -94,13 +94,11 @@ export default function ProcessingPage() {
       .then((r) => r.json())
       .then((data) => {
         sessionStorage.setItem("analysisResult", JSON.stringify({ ...data, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
-        clearFileStore();
         const remaining = Math.max(500, total - (Date.now() - t0));
         setTimeout(() => router.push("/results"), remaining);
       })
       .catch((err) => {
         console.error("Analysis error:", err);
-        clearFileStore();
         sessionStorage.setItem("analysisResult", JSON.stringify({ error: true, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
         setTimeout(() => router.push("/upload"), 1500);
       });

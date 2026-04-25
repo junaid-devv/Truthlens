@@ -211,6 +211,78 @@ Return ONLY a JSON object (no markdown):
   return null;
 }
 
+// ─── Gemini Face Check & Heatmap (Image/Video) ────────────────────────────────
+async function geminiFaceCheck(
+  ai: GoogleGenAI,
+  rawBase64: string,
+  mimeType: string,
+): Promise<{ match: string; interpretation: string; heatmap_zones?: any[] }> {
+  for (const model of GEMINI_MODELS) {
+    try {
+      console.log(`[GeminiFaceCheck] Analyzing with ${model}...`);
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType, data: rawBase64 } },
+            { text: `Analyze this image/video and tell me if there is a highly recognizable famous public figure (like Elon Musk, a celebrity, or a politician). Also, if you suspect any digital manipulation (like deepfakes, face swaps, or AI generation), provide approximate heatmap zones indicating where the manipulation is likely located (e.g., around the face, mouth, eyes, or background). Return ONLY a JSON object:
+{
+  "match": "Name of the person" or "No strong match",
+  "interpretation": "A short 3-5 word interpretation (e.g., 'Verify with source', 'Known public figure', 'Likely impersonation target')",
+  "heatmap_zones": [
+    { "top": "percentage string (e.g., '20%')", "left": "percentage string (e.g., '30%')", "size": integer (e.g., 60), "opacity": float between 0.3 and 0.8 }
+  ]
+}` },
+          ]
+        }],
+      });
+      const text = (response.text ?? '').trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(text) as { match: string; interpretation: string; heatmap_zones?: any[] };
+      console.log(`[GeminiFaceCheck] ✅ match=${parsed.match}`);
+      return parsed;
+    } catch (e) {
+      console.warn(`[GeminiFaceCheck] ⚠️ ${model} failed`);
+    }
+  }
+  return { match: "No strong match", interpretation: "Verify with source", heatmap_zones: [] };
+}
+
+// ─── Gemini Image Classify Fallback ─────────────────────────────────────────
+async function geminiImageClassifyFallback(
+  ai: GoogleGenAI,
+  rawBase64: string,
+  mimeType: string,
+): Promise<Record<string, unknown>[]> {
+  for (const model of GEMINI_MODELS) {
+    try {
+      console.log(`[GeminiImageFallback] Analyzing with ${model}...`);
+      const response = await ai.models.generateContent({
+        model,
+        contents: [{
+          role: 'user', parts: [
+            { inlineData: { mimeType, data: rawBase64 } },
+            { text: `Analyze this image and determine if it is an AI-generated/deepfake image or an authentic/real photograph. Return ONLY a valid JSON object matching exactly this schema, without markdown formatting:
+{
+  "fake_probability": <number between 0 and 1>
+}` },
+          ]
+        }],
+      });
+      const text = (response.text ?? '').trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+      const parsed = JSON.parse(text) as { fake_probability: number };
+      const fakeScore = parsed.fake_probability;
+      console.log(`[GeminiImageFallback] ✅ fake_probability=${fakeScore}`);
+      return [
+        { label: "fake", score: fakeScore },
+        { label: "real", score: 1 - fakeScore }
+      ];
+    } catch (e) {
+      console.warn(`[GeminiImageFallback] ⚠️ ${model} failed`, e instanceof Error ? e.message : e);
+    }
+  }
+  throw new Error("Gemini Image Classify Fallback failed");
+}
+
 // ─── HF image classification ───────────────────────────────────────────────────
 async function hfImageClassify(
   model: string,
@@ -398,6 +470,7 @@ export async function POST(req: NextRequest) {
       imageSecondary: Record<string, unknown>[] | null;
       context: Record<string, unknown> | null;
       transcript: string | null;
+      faceCheck: { match: string; interpretation: string } | null;
     } = {
       audio: null,
       emotion: null,
@@ -405,6 +478,7 @@ export async function POST(req: NextRequest) {
       imageSecondary: null,
       context: null,
       transcript: null,
+      faceCheck: null,
     };
 
     const ai = GEMINI_KEY ? new GoogleGenAI({ apiKey: GEMINI_KEY }) : null;
@@ -485,14 +559,26 @@ export async function POST(req: NextRequest) {
       ) as ArrayBuffer;
 
       tasks.push(
-        hfImageClassify('dima806/deepfake_vs_real_image_detection', imageBuffer, resolvedMime)
+        hfImageClassify('prithivMLmods/Deep-Fake-Detector-v2-Model', imageBuffer, resolvedMime)
           .then(r => { R.imagePrimary = r; })
-          .catch(e => { console.error('[Pipeline] Image primary ❌', e.message); }),
+          .catch(async e => { 
+            console.error('[Pipeline] Image primary ❌', e.message); 
+            if (ai) {
+              try { R.imagePrimary = await geminiImageClassifyFallback(ai, rawBase64, resolvedMime); }
+              catch(err) { console.error('[Pipeline] Gemini primary fallback ❌', err instanceof Error ? err.message : err); }
+            }
+          }),
       );
       tasks.push(
-        hfImageClassify('Organika/sdxl-detector', imageBuffer, resolvedMime)
+        hfImageClassify('Ateeqq/ai-vs-human-image-detector', imageBuffer, resolvedMime)
           .then(r => { R.imageSecondary = r; })
-          .catch(e => { console.error('[Pipeline] Image secondary ❌', e.message); }),
+          .catch(async e => { 
+            console.error('[Pipeline] Image secondary ❌', e.message); 
+            if (ai) {
+              try { R.imageSecondary = await geminiImageClassifyFallback(ai, rawBase64, resolvedMime); }
+              catch(err) { console.error('[Pipeline] Gemini secondary fallback ❌', err instanceof Error ? err.message : err); }
+            }
+          }),
       );
 
       // Images: BART uses filename — no audio to transcribe
@@ -515,6 +601,15 @@ export async function POST(req: NextRequest) {
         geminiAnalyzeAudio(ai, rawBase64, resolvedMime, fileName)
           .then(g => { if (g) (R as any).videoVisual = g; })
           .catch(e => { console.error('[Pipeline] Video Visual fatal:', e); }),
+      );
+    }
+
+    // ── Face check via Gemini ──────────────────────────────────────────────
+    if ((isImage || isVideo) && ai) {
+      tasks.push(
+        geminiFaceCheck(ai, rawBase64, resolvedMime)
+          .then(fc => { R.faceCheck = fc; })
+          .catch(e => { console.error('[Pipeline] Face check fatal:', e); })
       );
     }
 
@@ -597,10 +692,10 @@ export async function POST(req: NextRequest) {
       transcript: R.transcript ? R.transcript.slice(0, 2000) : null,
       transcript_available: R.transcript !== null,
       image_deepfake_primary: imagePrimary
-        ? { model: 'dima806/deepfake_vs_real_image_detection', score: imagePrimary.score, label: imagePrimary.label }
+        ? { model: 'prithivMLmods/Deep-Fake-Detector-v2-Model', score: imagePrimary.score, label: imagePrimary.label }
         : null,
       image_deepfake_secondary: imageSecondary
-        ? { model: 'Organika/sdxl-detector', score: imageSecondary.score, label: imageSecondary.label }
+        ? { model: 'Ateeqq/ai-vs-human-image-detector', score: imageSecondary.score, label: imageSecondary.label }
         : null,
       audio_deepfake: audioDeepfake
         ? {
@@ -742,10 +837,12 @@ export async function POST(req: NextRequest) {
         },
         suggested_scenario: 'Analysis unavailable — no synthesis API key.',
         plain_language_explanation: 'The AI analysis service is not configured. Please contact the administrator.',
-        verdict_sentence: 'Full analysis unavailable due to missing configuration.',
+          verdict_sentence: 'Full analysis unavailable due to missing configuration.',
         recommended_action: 'Please configure the GEMINI_API_KEY environment variable.',
       };
     }
+
+    geminiOutput.face_check = R.faceCheck ?? { match: "No strong match", interpretation: "Verify with source" };
 
     const elapsed = Date.now() - startTime;
     console.log(`======== [TruthLens] Analysis Complete in ${elapsed}ms ========\n`);

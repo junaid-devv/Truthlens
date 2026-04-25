@@ -12,22 +12,17 @@ function ArtifactItem({ text }: { text: string }) {
   );
 }
 
-function HeatmapOverlay() {
-  const zones = [
-    { top: "18%", left: "24%", size: 86, opacity: 0.7 },
-    { top: "14%", right: "26%", size: 64, opacity: 0.48 },
-    { top: "42%", left: "32%", size: 52, opacity: 0.58 },
-    { top: "58%", left: "46%", size: 42, opacity: 0.42 },
-  ];
-
+function HeatmapOverlay({ zones, imageUrl, isVideo }: { zones: any[], imageUrl?: string | null, isVideo?: boolean }) {
   return (
     <div
       className="surface-muted"
       style={{
         padding: 24,
         position: "relative",
-        overflow: "hidden",
         minHeight: 340,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
       }}
     >
       <div
@@ -37,64 +32,64 @@ function HeatmapOverlay() {
           borderRadius: 24,
           border: "1px solid var(--line)",
           background: "#111c2a",
+          overflow: "hidden",
         }}
-      />
+      >
+        {imageUrl ? (
+          isVideo ? (
+            <video
+              src={imageUrl}
+              style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.6 }}
+              muted
+              autoPlay
+              loop
+              playsInline
+            />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="Analysis subject" style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.6 }} />
+          )
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text-muted)",
+              fontStyle: "italic",
+              background: "var(--surface-muted)",
+              zIndex: 0,
+            }}
+          >
+            Original media unavailable
+          </div>
+        )}
 
-      <div
-        style={{
-          position: "absolute",
-          top: "14%",
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "42%",
-          height: "68%",
-          borderRadius: "48% 48% 44% 44%",
-          background: "#223246",
-        }}
-      />
-
-      <div
-        style={{
-          position: "absolute",
-          top: "32%",
-          left: "38%",
-          width: 12,
-          height: 12,
-          borderRadius: 999,
-          background: "#364e68",
-        }}
-      />
-      <div
-        style={{
-          position: "absolute",
-          top: "32%",
-          right: "38%",
-          width: 12,
-          height: 12,
-          borderRadius: 999,
-          background: "#364e68",
-        }}
-      />
-
-      {zones.map((zone, index) => (
-        <span
-          key={index}
-          style={{
-            position: "absolute",
-            ...zone,
-            width: zone.size,
-            height: zone.size,
-            borderRadius: 999,
-            background: `rgba(239, 100, 100, ${zone.opacity})`,
-            filter: "blur(24px)",
-          }}
-        />
-      ))}
+        {zones.map((zone, index) => (
+          <span
+            key={index}
+            style={{
+              position: "absolute",
+              top: zone.top,
+              left: zone.left,
+              right: zone.right,
+              width: zone.size,
+              height: zone.size,
+              borderRadius: 999,
+              background: `rgba(239, 100, 100, ${zone.opacity || 0.6})`,
+              filter: "blur(24px)",
+              pointerEvents: "none",
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
 
-export default function ImageTab({ result }: { result: AnalysisResult }) {
+export default function ImageTab({ result, imageUrl }: { result: AnalysisResult; imageUrl?: string | null }) {
   const isVideo = result.fileType === "video";
   const artifacts = result.visual_artifacts?.length
     ? result.visual_artifacts
@@ -172,7 +167,7 @@ export default function ImageTab({ result }: { result: AnalysisResult }) {
             <Camera size={18} color="var(--accent)" />
             <div style={{ fontWeight: 700 }}>Heatmap view</div>
           </div>
-          <HeatmapOverlay />
+          <HeatmapOverlay zones={result.face_check?.heatmap_zones || []} imageUrl={imageUrl} />
           <p className="note" style={{ margin: "16px 0 0" }}>
             Highlighted areas mark likely manipulation zones.
           </p>
@@ -183,12 +178,12 @@ export default function ImageTab({ result }: { result: AnalysisResult }) {
           <div className="summary-grid">
             <div className="summary-cell">
               <div className="label">Public match</div>
-              <div style={{ marginTop: 8, fontWeight: 700 }}>No strong match</div>
+              <div style={{ marginTop: 8, fontWeight: 700 }}>{result.face_check?.match || "No strong match"}</div>
             </div>
             <div className="summary-cell">
               <div className="label">Interpretation</div>
               <div style={{ marginTop: 8, fontWeight: 700 }}>
-                Verify with source
+                {result.face_check?.interpretation || "Verify with source"}
               </div>
             </div>
           </div>

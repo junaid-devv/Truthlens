@@ -11,6 +11,7 @@ import ImageTab from "@/components/tabs/ImageTab";
 import ReportTab from "@/components/tabs/ReportTab";
 import { AnalysisResult, getRiskColor, getVerdictColor, getVerdictLabel } from "@/lib/types";
 import { saveToHistory } from "@/lib/storage";
+import { getFileStoreDataUrl } from "@/lib/fileStore";
 
 function getTabsForFileType(fileType: string) {
   const tabs = ["Overview"];
@@ -39,6 +40,7 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
 export default function ResultsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Overview");
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
 
   const [result] = useState<AnalysisResult | null>(() => {
     if (typeof window === "undefined") return null;
@@ -50,6 +52,7 @@ export default function ResultsPage() {
 
   useEffect(() => { if (!result || result.error) router.replace("/upload"); }, [result, router]);
   useEffect(() => { if (result && !result.error) saveToHistory(result); }, [result]);
+  useEffect(() => { setImageUrl(getFileStoreDataUrl()); }, []);
 
   if (!result || result.error) {
     return (
@@ -259,7 +262,7 @@ export default function ResultsPage() {
               </div>
             )}
             {activeTab === "Audio" && <AudioTab result={result} />}
-            {activeTab === "Image" && <ImageTab result={result} />}
+            {activeTab === "Image" && <ImageTab result={result} imageUrl={imageUrl} />}
             {activeTab === "Context" && <ContextTab result={result} />}
             {activeTab === "Report" && <ReportTab result={result} />}
           </section>

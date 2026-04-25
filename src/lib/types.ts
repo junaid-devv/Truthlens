@@ -23,6 +23,17 @@ export interface AnalysisResult {
     consistency_label: 'consistent' | 'mismatch' | 'contradiction';
     explanation: string;
   };
+  face_check?: {
+    match: string;
+    interpretation: string;
+    heatmap_zones?: {
+      top: string;
+      left?: string;
+      right?: string;
+      size: number;
+      opacity: number;
+    }[];
+  };
   content_classification: {
     likely_type: string;
     confidence: number;
