@@ -62,9 +62,9 @@ export default function CertificatePage() {
         ? "pill-warning"
         : "pill-success";
   const verdictPillClass =
-    result.overall_verdict === "likely_ai"
+    result.overall_verdict === "LIKELY_FAKE"
       ? "pill-danger"
-      : result.overall_verdict === "uncertain"
+      : result.overall_verdict === "UNCERTAIN"
         ? "pill-warning"
         : "pill-success";
 
@@ -78,10 +78,10 @@ export default function CertificatePage() {
     })
     : "Unavailable";
 
-  const shareUrl = `https://truthlens.shield/verify/${result.analysisId}`;
+  const shareUrl = result ? `https://truthlens.shield/verify/${result.analysisId}` : "";
 
   async function handleDownloadPNG() {
-    if (!certRef.current || downloading) return;
+    if (!certRef.current || !result || downloading) return;
     setDownloading(true);
     try {
       const { default: html2canvas } = await import("html2canvas");
@@ -101,7 +101,7 @@ export default function CertificatePage() {
   }
 
   async function handleDownloadPDF() {
-    if (!certRef.current || downloading) return;
+    if (!certRef.current || !result || downloading) return;
     setDownloading(true);
     try {
       const { default: html2canvas } = await import("html2canvas");
