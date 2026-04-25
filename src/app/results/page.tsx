@@ -3,24 +3,13 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  AlertTriangle,
-  Download,
-  RefreshCw,
-  Share2,
-  ShieldCheck,
-} from "lucide-react";
+import { AlertTriangle, Download, RefreshCw, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import AudioTab from "@/components/tabs/AudioTab";
 import ContextTab from "@/components/tabs/ContextTab";
 import ImageTab from "@/components/tabs/ImageTab";
 import ReportTab from "@/components/tabs/ReportTab";
-import {
-  AnalysisResult,
-  getRiskColor,
-  getVerdictColor,
-  getVerdictLabel,
-} from "@/lib/types";
+import { AnalysisResult, getRiskColor, getVerdictColor, getVerdictLabel } from "@/lib/types";
 import { saveToHistory } from "@/lib/storage";
 
 function getTabsForFileType(fileType: string) {
@@ -31,13 +20,7 @@ function getTabsForFileType(fileType: string) {
   return tabs;
 }
 
-function ProgressBar({
-  value,
-  color,
-}: {
-  value: number;
-  color: string;
-}) {
+function ProgressBar({ value, color }: { value: number; color: string }) {
   return (
     <div className="progress-track">
       <div
@@ -45,28 +28,10 @@ function ProgressBar({
           width: `${value}%`,
           height: "100%",
           background: color,
-          transition: "width 600ms ease",
+          transition: "width 700ms ease",
+          borderRadius: "2px",
         }}
       />
-    </div>
-  );
-}
-
-function OverviewRow({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color?: string;
-}) {
-  return (
-    <div className="data-row">
-      <span className="label">{label}</span>
-      <span className="value" style={color ? { color } : undefined}>
-        {value}
-      </span>
     </div>
   );
 }
@@ -74,50 +39,26 @@ function OverviewRow({
 export default function ResultsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Overview");
-  const [shareCopied, setShareCopied] = useState(false);
+
   const [result] = useState<AnalysisResult | null>(() => {
     if (typeof window === "undefined") return null;
     try {
-      const stored = sessionStorage.getItem("analysisResult");
-      return stored ? (JSON.parse(stored) as AnalysisResult) : null;
-    } catch {
-      return null;
-    }
+      const s = sessionStorage.getItem("analysisResult");
+      return s ? (JSON.parse(s) as AnalysisResult) : null;
+    } catch { return null; }
   });
 
-  useEffect(() => {
-    if (!result || result.error) {
-      router.replace("/upload");
-    }
-  }, [result, router]);
-
-  useEffect(() => {
-    if (result && !result.error) {
-      saveToHistory(result);
-    }
-  }, [result]);
+  useEffect(() => { if (!result || result.error) router.replace("/upload"); }, [result, router]);
+  useEffect(() => { if (result && !result.error) saveToHistory(result); }, [result]);
 
   if (!result || result.error) {
     return (
       <>
         <Navbar />
         <div className="page-content">
-          <main
-            className="page-container"
-            style={{
-              display: "grid",
-              placeItems: "center",
-              minHeight: "70vh",
-            }}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div
-                className="icon-button spin"
-                style={{ margin: "0 auto 16px", width: 52, height: 52 }}
-              >
-                <RefreshCw size={22} />
-              </div>
-              <div className="note">Loading the analysis workspace.</div>
+          <main className="page-container" style={{ display: "grid", placeItems: "center", minHeight: "70vh" }}>
+            <div className="icon-button spin" style={{ width: 44, height: 44 }}>
+              <RefreshCw size={18} />
             </div>
           </main>
         </div>
@@ -128,198 +69,155 @@ export default function ResultsPage() {
   const riskColor = getRiskColor(result.risk_level);
   const verdictColor = getVerdictColor(result.overall_verdict);
   const confidenceColor =
-    result.confidence_in_verdict === "high"
-      ? "var(--success)"
-      : result.confidence_in_verdict === "medium"
-        ? "var(--warning)"
-        : "var(--danger)";
+    result.confidence_in_verdict === "high" ? "var(--green)" :
+      result.confidence_in_verdict === "medium" ? "var(--amber)" : "var(--danger)";
 
   const emotionValue =
     result.fileType === "image"
-      ? "Not applicable"
-      : `${
-          result.emotion_consistency.consistency_label === "contradiction"
-            ? "Low"
-            : result.emotion_consistency.consistency_label === "mismatch"
-              ? "Medium"
-              : "High"
-        } (${result.emotion_consistency.consistency_score}%)`;
+      ? "N/A"
+      : `${result.emotion_consistency.consistency_label === "contradiction" ? "Low" :
+        result.emotion_consistency.consistency_label === "mismatch" ? "Medium" : "High"
+      } (${result.emotion_consistency.consistency_score}%)`;
 
-  async function handleShare() {
-    const currentResult = result;
-    if (!currentResult) {
-      return;
-    }
-
-    const shareUrl = `${window.location.origin}/certificate`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `TruthLens analysis for ${currentResult.fileName}`,
-          text: `Verdict: ${getVerdictLabel(currentResult.overall_verdict)}`,
-          url: shareUrl,
-        });
-      } catch {
-        return;
-      }
-      return;
-    }
-
-    await navigator.clipboard.writeText(shareUrl);
-    setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 1800);
-  }
+  const riskPillClass =
+    result.risk_level === "critical" || result.risk_level === "high"
+      ? "pill-danger"
+      : result.risk_level === "medium"
+        ? "pill-warning"
+        : "pill-success";
 
   return (
     <>
       <Navbar />
       <div className="page-content">
         <main className="page-container stack-lg">
+
+          {/* Header */}
           <header
             className="fade-in"
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-end",
-              gap: 20,
-              flexWrap: "wrap",
-            }}
+            style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}
           >
             <div className="page-intro">
-              <span className="eyebrow">Analysis complete</span>
-              <h1 className="page-title">{result.fileName}</h1>
-              <p className="page-subtitle">
-                Review the verdict, then inspect details by tab.
-              </p>
+              <span className="eyebrow">Result</span>
+              <h1 className="page-title" style={{ fontSize: "clamp(1.8rem, 3.5vw, 2.8rem)" }}>
+                {result.fileName}
+              </h1>
             </div>
-
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button type="button" className="button button-secondary" onClick={handleShare}>
-                <Share2 size={16} />
-                {shareCopied ? "Link copied" : "Share"}
-              </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Link href="/upload" className="button button-secondary">
-                <RefreshCw size={16} />
+                <RefreshCw size={15} />
                 New Scan
               </Link>
               <Link href="/certificate" className="button button-primary">
-                <Download size={16} />
+                <Download size={15} />
                 Certificate
               </Link>
             </div>
           </header>
 
+          {/* Verdict shell */}
           <section className="result-shell">
-            <div className="surface" style={{ padding: 32 }}>
+            <div className="surface" style={{ padding: 28 }}>
               <div className="stack-md">
-                <span
-                  className={`pill ${
-                    result.risk_level === "critical" || result.risk_level === "high"
-                      ? "pill-danger"
-                      : result.risk_level === "medium"
-                        ? "pill-warning"
-                        : "pill-success"
-                  }`}
-                >
-                  {result.risk_level} risk
-                </span>
+                <span className={`pill ${riskPillClass}`}>{result.risk_level} risk</span>
 
-                <div className="section-grid-2" style={{ alignItems: "start" }}>
+                <div className="section-grid-2" style={{ alignItems: "start", gap: 20 }}>
                   <div className="stack-sm">
-                    <h2 className="section-title">{result.verdict_sentence}</h2>
-                    <p className="note" style={{ margin: 0 }}>
-                      {result.plain_language_explanation}
-                    </p>
+                    <h2
+                      style={{
+                        margin: 0,
+                        fontFamily: "var(--font-display)",
+                        fontSize: "1.5rem",
+                        fontWeight: 800,
+                        letterSpacing: "-0.03em",
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {result.verdict_sentence}
+                    </h2>
+                    <p className="note">{result.plain_language_explanation}</p>
                   </div>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "flex-start",
-                      gap: 10,
-                    }}
-                  >
-                    <div className="result-score status-value" style={{ color: riskColor }}>
+                  <div>
+                    <div className="result-score" style={{ color: riskColor }}>
                       {result.probability_ai_generated}%
                     </div>
-                    <div className="label">probability of AI generation</div>
+                    <div className="label" style={{ marginTop: 4 }}>AI generation probability</div>
                   </div>
                 </div>
 
+                {/* Progress bar */}
                 <div className="stack-sm">
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      gap: 12,
-                      fontSize: "0.88rem",
-                      color: "var(--text-soft)",
+                      fontSize: "0.75rem",
+                      color: "var(--text-3)",
+                      fontFamily: "var(--font-mono)",
                     }}
                   >
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
+                    <span>0%</span><span>50%</span><span>100%</span>
                   </div>
                   <ProgressBar value={result.probability_ai_generated} color={riskColor} />
                 </div>
 
-                <div className="surface-muted" style={{ padding: 20 }}>
-                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                    <AlertTriangle
-                      size={18}
-                      color={riskColor}
-                      style={{ marginTop: 2, flexShrink: 0 }}
-                    />
-                    <div>
-                      <div style={{ fontWeight: 700, color: riskColor }}>
-                        Recommended action
-                      </div>
-                      <p className="note" style={{ margin: "8px 0 0" }}>
-                        {result.recommended_action}
-                      </p>
+                {/* Recommended action */}
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 12,
+                    alignItems: "flex-start",
+                    padding: 16,
+                    border: "1px solid var(--line)",
+                    borderRadius: "var(--r)",
+                    background: "var(--bg-2)",
+                  }}
+                >
+                  <AlertTriangle size={16} color={riskColor} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <div>
+                    <div style={{ fontWeight: 700, color: riskColor, fontSize: "0.88rem" }}>
+                      Recommended action
                     </div>
+                    <p className="note" style={{ marginTop: 6 }}>{result.recommended_action}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <aside className="surface-stack">
-              <div className="surface-muted" style={{ padding: 24 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <ShieldCheck size={18} color="var(--accent)" />
-                  <div style={{ fontWeight: 700 }}>At a glance</div>
+            {/* At a glance */}
+            <aside>
+              <div className="surface-muted" style={{ padding: 20 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <ShieldCheck size={15} color="var(--text-3)" />
+                  <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>At a glance</div>
                 </div>
-
-                <div className="data-list" style={{ marginTop: 12 }}>
-                  <OverviewRow
-                    label="Verdict"
-                    value={getVerdictLabel(result.overall_verdict)}
-                    color={verdictColor}
-                  />
-                  <OverviewRow
-                    label="Risk level"
-                    value={result.risk_level}
-                    color={riskColor}
-                  />
-                  <OverviewRow
-                    label="Confidence"
-                    value={result.confidence_in_verdict}
-                    color={confidenceColor}
-                  />
-                  <OverviewRow
-                    label="Content type"
-                    value={result.content_classification.likely_type || "-"}
-                  />
-                  <OverviewRow label="Emotion consistency" value={emotionValue} />
-                  <OverviewRow label="Analysis ID" value={result.analysisId} />
+                <div className="data-list">
+                  {[
+                    { l: "Verdict", v: getVerdictLabel(result.overall_verdict), c: verdictColor },
+                    { l: "Risk", v: result.risk_level, c: riskColor },
+                    { l: "Confidence", v: result.confidence_in_verdict, c: confidenceColor },
+                    { l: "Content type", v: result.content_classification.likely_type || "â€”" },
+                    { l: "Emotion", v: emotionValue },
+                    { l: "ID", v: result.analysisId, mono: true },
+                  ].map(({ l, v, c, mono }) => (
+                    <div key={l} className="data-row">
+                      <span className="label">{l}</span>
+                      <span
+                        className={mono ? "value mono" : "value"}
+                        style={c ? { color: c, fontSize: mono ? "0.72rem" : undefined } : { fontSize: mono ? "0.72rem" : undefined }}
+                      >
+                        {v}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </aside>
           </section>
 
-          <section className="surface-muted" style={{ padding: 16 }}>
+          {/* Tabs */}
+          <section style={{ display: "flex", gap: 4, padding: "0" }}>
             <div className="tab-nav">
               {getTabsForFileType(result.fileType).map((tab) => (
                 <button
@@ -334,42 +232,32 @@ export default function ResultsPage() {
             </div>
           </section>
 
-          <section className="surface" style={{ padding: 28 }}>
+          {/* Tab content */}
+          <section className="surface" style={{ padding: 24 }}>
             {activeTab === "Overview" && (
-              <div className="stack-lg">
-                <div className="summary-grid">
-                  <div className="summary-cell">
-                    <div className="label">Source file</div>
-                    <div style={{ marginTop: 8, fontWeight: 700 }}>{result.fileName}</div>
-                  </div>
-                  <div className="summary-cell">
-                    <div className="label">Media mode</div>
+              <div className="summary-grid">
+                {[
+                  { l: "Source file", v: result.fileName },
+                  { l: "Media mode", v: result.fileType, cap: true },
+                  { l: "Matched scenario", v: result.content_classification.matched_scenario },
+                  { l: "Suggested scenario", v: result.suggested_scenario },
+                ].map(({ l, v, cap }) => (
+                  <div key={l} className="summary-cell">
+                    <div className="label">{l}</div>
                     <div
                       style={{
-                        marginTop: 8,
+                        marginTop: 6,
                         fontWeight: 700,
-                        textTransform: "capitalize",
+                        fontSize: "0.9rem",
+                        textTransform: cap ? "capitalize" : undefined,
                       }}
                     >
-                      {result.fileType}
+                      {v}
                     </div>
                   </div>
-                  <div className="summary-cell">
-                    <div className="label">Matched scenario</div>
-                    <div style={{ marginTop: 8, fontWeight: 700 }}>
-                      {result.content_classification.matched_scenario}
-                    </div>
-                  </div>
-                  <div className="summary-cell">
-                    <div className="label">Suggested scenario</div>
-                    <div style={{ marginTop: 8, fontWeight: 700 }}>
-                      {result.suggested_scenario}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             )}
-
             {activeTab === "Audio" && <AudioTab result={result} />}
             {activeTab === "Image" && <ImageTab result={result} />}
             {activeTab === "Context" && <ContextTab result={result} />}
@@ -380,3 +268,4 @@ export default function ResultsPage() {
     </>
   );
 }
+

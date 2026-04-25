@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 import {
   ArrowRight,
@@ -15,51 +17,33 @@ const detectionStack = [
   {
     icon: AudioLines,
     title: "Audio forensics",
-    description: "Voice cloning and synthetic timbre checks.",
+    description: "Voice cloning and synthetic timbre detection.",
     status: "Active",
   },
   {
     icon: ImageIcon,
     title: "Image verification",
-    description: "Artifact and lighting consistency checks.",
+    description: "Artifact and lighting consistency analysis.",
     status: "Ready",
   },
   {
     icon: Video,
     title: "Video analysis",
-    description: "Frame continuity and audio-visual mismatch checks.",
+    description: "Frame continuity and A/V mismatch checks.",
     status: "Ready",
   },
 ];
 
 const workflow = [
-  {
-    title: "Upload suspicious media",
-    copy: "Audio, image, or video. The app routes to the correct checks.",
-  },
-  {
-    title: "Run forensic analysis",
-    copy: "Signal and consistency checks run as a single pipeline.",
-  },
-  {
-    title: "Export decision proof",
-    copy: "Receive a risk verdict, evidence summary, and certificate.",
-  },
+  { step: "01", title: "Upload", copy: "Audio, image, or video — up to 50 MB." },
+  { step: "02", title: "Analyze", copy: "Multi-model pipeline runs in under 25 seconds." },
+  { step: "03", title: "Export", copy: "Risk verdict, evidence summary, and certificate." },
 ];
 
 const useCases = [
-  {
-    title: "Fraud response",
-    copy: "Validate suspicious calls and forwarded media quickly.",
-  },
-  {
-    title: "Newsroom checks",
-    copy: "Screen user-generated content before publication.",
-  },
-  {
-    title: "Operations",
-    copy: "Create shareable proof for internal and external review.",
-  },
+  { icon: ShieldCheck, title: "Fraud response", copy: "Validate suspicious calls and forwarded media." },
+  { icon: ScanSearch, title: "Newsroom checks", copy: "Screen UGC before publication." },
+  { icon: FileCheck2, title: "Operations", copy: "Create shareable proof for internal review." },
 ];
 
 export default function HomePage() {
@@ -68,93 +52,72 @@ export default function HomePage() {
       <Navbar />
       <div className="page-content">
         <main className="page-container stack-lg">
+
+          {/* Hero */}
           <section className="hero-grid fade-in">
             <div>
-              <span className="eyebrow">Voice, image, and video verification</span>
+              <span className="eyebrow">Voice · Image · Video</span>
               <h1 className="page-title">
-                Verify suspicious media before it can harm you.
+                Detect deepfakes.<br />Act on evidence.
               </h1>
               <p className="page-subtitle">
-                One focused workflow from upload to verdict, with evidence you
-                can act on.
+                One pipeline from upload to verdict, with a certificate you can share.
               </p>
 
               <div className="hero-actions">
                 <Link href="/upload" className="button button-primary">
                   Start Analysis
-                  <ArrowRight size={18} />
+                  <ArrowRight size={16} />
                 </Link>
                 <Link href="/history" className="button button-secondary">
-                  View History
+                  History
                 </Link>
               </div>
 
-              <div className="metric-grid hero-metrics">
-                <div className="metric-item">
-                  <div className="metric-value">&lt;25s</div>
-                  <div className="metric-label">Typical turnaround</div>
-                </div>
-                <div className="metric-item">
-                  <div className="metric-value">9</div>
-                  <div className="metric-label">Models in stack</div>
-                </div>
-                <div className="metric-item">
-                  <div className="metric-value">3</div>
-                  <div className="metric-label">Media modes</div>
-                </div>
-                <div className="metric-item">
-                  <div className="metric-value">On-device</div>
-                  <div className="metric-label">Privacy first</div>
-                </div>
+              <div className="metric-grid">
+                {[
+                  { v: "<25s", l: "Turnaround" },
+                  { v: "9", l: "Models" },
+                  { v: "3", l: "Media modes" },
+                  { v: "On-device", l: "Privacy" },
+                ].map(({ v, l }) => (
+                  <div key={l} className="metric-item">
+                    <div className="metric-value">{v}</div>
+                    <div className="metric-label">{l}</div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            <aside className="surface" style={{ padding: 28 }}>
+            {/* Detection stack card */}
+            <aside className="surface" style={{ padding: 24 }}>
               <div className="stack-md">
-                <div className="stack-sm">
-                  <span className="eyebrow">Detection stack</span>
-                </div>
+                <span className="eyebrow">Detection stack</span>
 
-                <div className="stack-sm">
-                  {detectionStack.map((item, index) => (
-                    <div
-                      key={item.title}
-                      className={`signal-row${index === 0 ? " is-emphasis" : ""}`}
-                    >
-                      <span className="signal-icon">
-                        <item.icon
-                          size={22}
-                          color={index === 0 ? "var(--accent)" : "var(--text-dim)"}
-                        />
-                      </span>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{item.title}</div>
-                        <div className="note" style={{ fontSize: "0.92rem" }}>
-                          {item.description}
-                        </div>
-                      </div>
-                      <span
-                        className={`pill ${
-                          index === 0 ? "pill-accent" : "pill-success"
-                        }`}
-                      >
-                        {item.status}
-                      </span>
+                {detectionStack.map((item, i) => (
+                  <div key={item.title} className={`signal-row${i === 0 ? " is-emphasis" : ""}`}>
+                    <span className="signal-icon">
+                      <item.icon size={18} color={i === 0 ? "var(--red)" : "var(--text-2)"} />
+                    </span>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>{item.title}</div>
+                      <div className="note" style={{ fontSize: "0.83rem" }}>{item.description}</div>
                     </div>
-                  ))}
-                </div>
+                    <span className={`pill ${i === 0 ? "pill-accent" : "pill-success"}`}>
+                      {item.status}
+                    </span>
+                  </div>
+                ))}
 
                 <div className="section-divider" />
 
                 <div className="signal-row">
                   <span className="signal-icon">
-                    <FileCheck2 size={20} color="var(--accent)" />
+                    <FileCheck2 size={18} color="var(--text-2)" />
                   </span>
                   <div>
-                    <div style={{ fontWeight: 700 }}>Certificate output</div>
-                    <div className="note" style={{ fontSize: "0.92rem" }}>
-                      Shareable verdict and supporting evidence.
-                    </div>
+                    <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>Certificate output</div>
+                    <div className="note" style={{ fontSize: "0.83rem" }}>Exportable verdict and evidence.</div>
                   </div>
                   <span className="pill pill-success">Included</span>
                 </div>
@@ -162,89 +125,72 @@ export default function HomePage() {
             </aside>
           </section>
 
-          <section id="workflow" className="stack-lg">
-            <div className="page-intro">
-              <span className="eyebrow">How it works</span>
-              <h2 className="section-title">Three steps. One clear verdict.</h2>
-            </div>
-
-            <div className="surface" style={{ padding: "8px 28px" }}>
-              {workflow.map((item, index) => (
-                <div key={item.title} className="definition-row">
-                  <div>
-                    <div className="label">Step {index + 1}</div>
-                    <div style={{ marginTop: 8, fontSize: "1.15rem", fontWeight: 700 }}>
-                      {item.title}
-                    </div>
-                  </div>
-                  <p className="note" style={{ margin: 0 }}>
-                    {item.copy}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-
+          {/* Workflow */}
           <section className="stack-lg">
-            <div className="page-intro">
-              <span className="eyebrow">Use cases</span>
-              <h2 className="section-title">Built for real verification work.</h2>
-            </div>
-
-            <div className="section-grid-3">
-              {useCases.map((item) => (
-                <div key={item.title} className="surface-muted" style={{ padding: 24 }}>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 12,
-                      marginBottom: 12,
-                    }}
-                  >
-                    <span className="signal-icon" style={{ width: 44, height: 44 }}>
-                      {item.title === "Fraud response" && (
-                        <ShieldCheck size={20} color="var(--accent)" />
-                      )}
-                      {item.title === "Newsroom checks" && (
-                        <ScanSearch size={20} color="var(--accent)" />
-                      )}
-                      {item.title === "Operations" && (
-                        <FileCheck2 size={20} color="var(--accent)" />
-                      )}
+            <span className="eyebrow">How it works</span>
+            <div className="surface" style={{ padding: "4px 24px" }}>
+              {workflow.map((item) => (
+                <div key={item.step} className="definition-row" style={{ alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <span
+                      className="mono"
+                      style={{ color: "var(--text-3)", fontSize: "0.75rem", letterSpacing: "0.08em" }}
+                    >
+                      {item.step}
                     </span>
-                    <div style={{ fontWeight: 700 }}>{item.title}</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 700 }}>{item.title}</div>
                   </div>
-                  <p className="note" style={{ margin: 0 }}>
-                    {item.copy}
-                  </p>
+                  <p className="note" style={{ margin: 0 }}>{item.copy}</p>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="surface" style={{ padding: 32 }}>
-            <div className="workspace-grid" style={{ alignItems: "center" }}>
-              <div className="stack-sm">
-                <span className="eyebrow">Ready</span>
-                <h2 className="section-title">Start your analysis now.</h2>
-                <p className="note" style={{ margin: 0 }}>
-                  Upload media, run the stack, and get a verdict you can trust.
+          {/* Use cases */}
+          <section className="section-grid-3">
+            {useCases.map((item) => (
+              <div key={item.title} className="surface-muted" style={{ padding: 22 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                  <span className="signal-icon" style={{ width: 36, height: 36 }}>
+                    <item.icon size={16} color="var(--red)" />
+                  </span>
+                  <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>{item.title}</div>
+                </div>
+                <p className="note" style={{ margin: 0, fontSize: "0.88rem" }}>{item.copy}</p>
+              </div>
+            ))}
+          </section>
+
+          {/* CTA */}
+          <section className="surface" style={{ padding: "28px 32px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 20,
+                flexWrap: "wrap",
+              }}
+            >
+              <div>
+                <h2 className="section-title" style={{ fontSize: "1.6rem" }}>
+                  Start your analysis now.
+                </h2>
+                <p className="note" style={{ marginTop: 6 }}>
+                  Upload media, run the stack, get a verdict you can act on.
                 </p>
               </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-start", gap: 12 }}>
-                <Link href="/upload" className="button button-primary">
-                  Open Analyzer
-                </Link>
-              </div>
+              <Link href="/upload" className="button button-primary">
+                Open Analyzer <ArrowRight size={16} />
+              </Link>
             </div>
           </section>
 
+          {/* Footer */}
           <footer
-            className="section-divider"
             style={{
-              paddingTop: 28,
+              paddingTop: 24,
+              borderTop: "1px solid var(--line)",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -253,16 +199,8 @@ export default function HomePage() {
             }}
           >
             <BrandMark compact />
-            <div
-              style={{
-                display: "flex",
-                gap: 18,
-                flexWrap: "wrap",
-                color: "var(--text-soft)",
-              }}
-            >
-              <span>Voice, image, video checks</span>
-              <span>Evidence-backed certificates</span>
+            <div className="note" style={{ fontSize: "0.8rem" }}>
+              Voice · Image · Video · Certificates
             </div>
           </footer>
         </main>

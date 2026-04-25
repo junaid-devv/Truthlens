@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Shield } from "lucide-react";
+import AppLogo from "@/components/AppLogo";
 
 type BrandMarkProps = {
   href?: string;
@@ -10,7 +10,7 @@ function BrandMarkContent({ compact = false }: { compact?: boolean }) {
   return (
     <>
       <span className={`brand-mark__badge${compact ? " compact" : ""}`}>
-        <Shield size={compact ? 18 : 22} strokeWidth={2.4} />
+        <AppLogo size={compact ? 18 : 22} />
       </span>
       <span className="brand-mark__copy">
         <span className="brand-mark__title">TruthLens</span>

@@ -2,99 +2,42 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  CheckCircle2,
-  Clock3,
-  LoaderCircle,
-  ShieldCheck,
-} from "lucide-react";
+import { CheckCircle2, Clock3, LoaderCircle, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import {
-  clearFileStore,
-  getFileStoreDataUrl,
-  getFileStoreMeta,
-} from "@/lib/fileStore";
+import { clearFileStore, getFileStoreDataUrl, getFileStoreMeta } from "@/lib/fileStore";
 
 const stepTimings = [800, 2400, 2700, 1300, 600, 300, 3200, 2000];
 
 function getPipelineSteps(mediaType: string) {
   return [
-    {
-      id: "privacy",
-      label: "Privacy filter",
-      time: "0.8s",
-      model: "Client-side intake",
-    },
+    { id: "privacy", label: "Privacy filter", model: "Client-side intake" },
     ...(mediaType === "image"
-      ? [
-          {
-            id: "image-primary",
-            label: "Image deepfake detection",
-            time: "2.4s",
-            model: "ViT verifier",
-          },
-        ]
-      : [
-          {
-            id: "audio",
-            label: "Audio deepfake detection",
-            time: "3.5s",
-            model: "XLS-R detector",
-          },
-        ]),
-    {
-      id: "consistency",
-      label: mediaType === "image" ? "Texture verification" : "Emotion consistency",
-      time: "1.2s",
-      model: "Behavioral review",
-    },
-    {
-      id: "context",
-      label: "Context classification",
-      time: "0.3s",
-      model: "BART-MNLI",
-    },
-    {
-      id: "report",
-      label: "Evidence synthesis",
-      time: "3.2s",
-      model: "Gemini Flash",
-    },
-    {
-      id: "certificate",
-      label: "Certificate preparation",
-      time: "Waiting",
-      model: "Report engine",
-    },
+      ? [{ id: "image-primary", label: "Image deepfake detection", model: "ViT verifier" }]
+      : [{ id: "audio", label: "Audio deepfake detection", model: "XLS-R detector" }]),
+    { id: "consistency", label: mediaType === "image" ? "Texture verification" : "Emotion consistency", model: "Behavioral review" },
+    { id: "context", label: "Context classification", model: "BART-MNLI" },
+    { id: "report", label: "Evidence synthesis", model: "Gemini Flash" },
+    { id: "certificate", label: "Certificate preparation", model: "Report engine" },
   ];
 }
 
 function CircularProgress({ pct }: { pct: number }) {
-  const radius = 88;
-  const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (pct / 100) * circumference;
+  const radius = 72;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (pct / 100) * circ;
 
   return (
-    <svg viewBox="0 0 220 220" aria-hidden="true">
+    <svg viewBox="0 0 180 180" aria-hidden="true">
+      <circle cx="90" cy="90" r={radius} fill="none" stroke="var(--line-2)" strokeWidth="8" />
       <circle
-        cx="110"
-        cy="110"
-        r={radius}
+        cx="90" cy="90" r={radius}
         fill="none"
-        stroke="var(--line)"
-        strokeWidth="12"
-      />
-      <circle
-        cx="110"
-        cy="110"
-        r={radius}
-        fill="none"
-        stroke="var(--accent)"
-        strokeWidth="12"
+        stroke="var(--red)"
+        strokeWidth="8"
         strokeLinecap="round"
-        strokeDasharray={circumference}
+        strokeDasharray={circ}
         strokeDashoffset={offset}
-        transform="rotate(-90 110 110)"
+        transform="rotate(-90 90 90)"
         style={{ transition: "stroke-dashoffset 600ms ease" }}
       />
     </svg>
@@ -107,46 +50,30 @@ export default function ProcessingPage() {
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [progress, setProgress] = useState(0);
-  const [fileInfo] = useState<{
-    name: string;
-    type: string;
-    mediaType: string;
-  } | null>(() => getFileStoreMeta());
+  const [fileInfo] = useState(() => getFileStoreMeta());
   const [analysisId] = useState(
-    () =>
-      `VS-${Date.now().toString(36).toUpperCase()}-${Math.random()
-        .toString(36)
-        .slice(2, 6)
-        .toUpperCase()}`,
+    () => `VS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`,
   );
 
   useEffect(() => {
-    if (!fileInfo) {
-      router.push("/upload");
-    }
+    if (!fileInfo) router.push("/upload");
   }, [fileInfo, router]);
 
   useEffect(() => {
-    if (!fileInfo || apiCalledRef.current) {
-      return;
-    }
-
+    if (!fileInfo || apiCalledRef.current) return;
     apiCalledRef.current = true;
+
     const steps = getPipelineSteps(fileInfo.mediaType);
-    let localStep = 0;
+    let local = 0;
 
     const advance = () => {
-      if (localStep >= steps.length) {
-        return;
-      }
-
-      setCurrentStep(localStep);
-      const delay = stepTimings[localStep] ?? 1000;
-
+      if (local >= steps.length) return;
+      setCurrentStep(local);
+      const delay = stepTimings[local] ?? 1000;
       setTimeout(() => {
-        setCompletedSteps((previous) => new Set([...previous, localStep]));
-        setProgress(Math.round(((localStep + 1) / steps.length) * 100));
-        localStep += 1;
+        setCompletedSteps((p) => new Set([...p, local]));
+        setProgress(Math.round(((local + 1) / steps.length) * 100));
+        local += 1;
         advance();
       }, delay);
     };
@@ -154,65 +81,32 @@ export default function ProcessingPage() {
     advance();
 
     const fileData = getFileStoreDataUrl();
-    if (!fileData) {
-      router.push("/upload");
-      return;
-    }
+    if (!fileData) { router.push("/upload"); return; }
 
-    const apiStartTime = Date.now();
-    const totalAnimationTime = stepTimings.reduce((sum, timing) => sum + timing, 0);
+    const t0 = Date.now();
+    const total = stepTimings.reduce((a, b) => a + b, 0);
 
     fetch("/api/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fileData,
-        fileName: fileInfo.name,
-        fileType: fileInfo.mediaType,
-        mimeType: fileInfo.type,
-      }),
+      body: JSON.stringify({ fileData, fileName: fileInfo.name, fileType: fileInfo.mediaType, mimeType: fileInfo.type }),
     })
-      .then((response) => response.json())
+      .then((r) => r.json())
       .then((data) => {
-        sessionStorage.setItem(
-          "analysisResult",
-          JSON.stringify({
-            ...data,
-            analysisId,
-            fileName: fileInfo.name,
-            fileType: fileInfo.mediaType,
-          }),
-        );
-
+        sessionStorage.setItem("analysisResult", JSON.stringify({ ...data, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
         clearFileStore();
-
-        const elapsed = Date.now() - apiStartTime;
-        const remaining = Math.max(500, totalAnimationTime - elapsed);
+        const remaining = Math.max(500, total - (Date.now() - t0));
         setTimeout(() => router.push("/results"), remaining);
       })
-      .catch((error) => {
-        console.error("Analysis error:", error);
+      .catch((err) => {
+        console.error("Analysis error:", err);
         clearFileStore();
-        sessionStorage.setItem(
-          "analysisResult",
-          JSON.stringify({
-            error: true,
-            analysisId,
-            fileName: fileInfo.name,
-            fileType: fileInfo.mediaType,
-          }),
-        );
+        sessionStorage.setItem("analysisResult", JSON.stringify({ error: true, analysisId, fileName: fileInfo.name, fileType: fileInfo.mediaType }));
         setTimeout(() => router.push("/upload"), 1500);
       });
   }, [analysisId, fileInfo, router]);
 
-  const mediaLabel =
-    fileInfo?.mediaType === "audio"
-      ? "audio"
-      : fileInfo?.mediaType === "image"
-        ? "image"
-        : "video";
-
+  const mediaLabel = fileInfo?.mediaType === "audio" ? "audio" : fileInfo?.mediaType === "image" ? "image" : "video";
   const pipelineSteps = getPipelineSteps(fileInfo?.mediaType || "audio");
 
   return (
@@ -220,71 +114,50 @@ export default function ProcessingPage() {
       <Navbar />
       <div className="page-content">
         <main className="page-container stack-lg">
+
           <header className="page-intro fade-in">
             <span className="eyebrow">Processing</span>
             <h1 className="page-title">
-              Inspecting your {fileInfo ? mediaLabel : "file"} now.
+              Inspecting {fileInfo ? `your ${mediaLabel}` : "the file"}.
             </h1>
-            <p className="page-subtitle">
-              Track live stage progress in real time.
-            </p>
           </header>
 
           <section className="workspace-grid">
-            <div className="surface" style={{ padding: 28 }}>
+            {/* Pipeline */}
+            <div className="surface" style={{ padding: 24 }}>
               <div className="stack-md">
                 <div
                   style={{
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
-                    gap: 16,
+                    gap: 12,
                   }}
                 >
-                  <div>
-                    <div className="label">Pipeline stages</div>
-                    <div style={{ marginTop: 8, fontSize: "1.2rem", fontWeight: 700 }}>
-                      Execution status
-                    </div>
-                  </div>
-                  <span className="pill pill-accent">{progress}% complete</span>
+                  <div style={{ fontWeight: 700 }}>Pipeline</div>
+                  <span className="pill pill-accent">{progress}%</span>
                 </div>
 
                 <div>
-                  {pipelineSteps.map((step, index) => {
-                    const isDone = completedSteps.has(index);
-                    const isCurrent = currentStep === index && !isDone;
-
+                  {pipelineSteps.map((step, i) => {
+                    const isDone = completedSteps.has(i);
+                    const isCurrent = currentStep === i && !isDone;
                     return (
                       <div
                         key={step.id}
-                        className={`stage-row${
-                          isDone
-                            ? " is-done"
-                            : isCurrent
-                              ? " is-current"
-                              : ""
-                        }`}
+                        className={`stage-row${isDone ? " is-done" : isCurrent ? " is-current" : ""}`}
                       >
                         <span className="stage-status">
-                          {isDone ? (
-                            <CheckCircle2 size={16} color="var(--success)" />
-                          ) : isCurrent ? (
-                            <LoaderCircle size={16} color="var(--accent)" className="spin" />
-                          ) : (
-                            <Clock3 size={16} color="var(--text-soft)" />
-                          )}
+                          {isDone ? <CheckCircle2 size={14} color="var(--green)" /> :
+                            isCurrent ? <LoaderCircle size={14} color="var(--red)" className="spin" /> :
+                              <Clock3 size={14} color="var(--text-3)" />}
                         </span>
-
                         <div>
-                          <div style={{ fontWeight: 700 }}>{step.label}</div>
-                          <div className="note" style={{ fontSize: "0.88rem" }}>
-                            {step.model}
-                          </div>
+                          <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>{step.label}</div>
+                          <div className="note mono" style={{ fontSize: "0.78rem" }}>{step.model}</div>
                         </div>
-
-                        <div className="mono" style={{ color: "var(--text-dim)" }}>
-                          {isDone ? "Done" : isCurrent ? "Running" : step.time}
+                        <div className="mono" style={{ color: "var(--text-3)", fontSize: "0.78rem" }}>
+                          {isDone ? "done" : isCurrent ? "running" : "—"}
                         </div>
                       </div>
                     );
@@ -293,8 +166,9 @@ export default function ProcessingPage() {
               </div>
             </div>
 
+            {/* Sidebar */}
             <aside className="surface-stack">
-              <div className="surface" style={{ padding: 28 }}>
+              <div className="surface" style={{ padding: 24 }}>
                 <div className="stack-md" style={{ textAlign: "center" }}>
                   <div className="dial">
                     <CircularProgress pct={progress} />
@@ -308,61 +182,59 @@ export default function ProcessingPage() {
                         justifyContent: "center",
                       }}
                     >
-                      <div className="result-score status-value">{progress}%</div>
-                      <div className="label">overall progress</div>
+                      <div
+                        className="mono"
+                        style={{ fontSize: "2.2rem", fontWeight: 700, letterSpacing: "-0.04em", lineHeight: 1 }}
+                      >
+                        {progress}%
+                      </div>
+                      <div className="note" style={{ fontSize: "0.75rem", marginTop: 4 }}>complete</div>
                     </div>
                   </div>
 
                   <div>
-                    <div style={{ fontWeight: 700 }}>
-                      {pipelineSteps[Math.min(currentStep, pipelineSteps.length - 1)]
-                        ?.label || "Preparing"}
+                    <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                      {pipelineSteps[Math.min(currentStep, pipelineSteps.length - 1)]?.label || "Preparing"}
                     </div>
-                    <p className="note" style={{ margin: "8px 0 0" }}>
-                      {completedSteps.size} of {pipelineSteps.length} stages
-                      complete.
+                    <p className="note" style={{ margin: "6px 0 0", fontSize: "0.83rem" }}>
+                      {completedSteps.size} / {pipelineSteps.length} stages
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="surface-muted" style={{ padding: 24 }}>
-                <div className="stack-sm">
-                  <div className="label">Current analysis</div>
-                  <div className="data-list">
-                    <div className="data-row">
-                      <span className="label">File</span>
-                      <span className="value">{fileInfo?.name || "-"}</span>
-                    </div>
-                    <div className="data-row">
-                      <span className="label">Mode</span>
-                      <span className="value" style={{ textTransform: "capitalize" }}>
-                        {mediaLabel}
-                      </span>
-                    </div>
-                    <div className="data-row">
-                      <span className="label">Analysis ID</span>
-                      <span className="value mono">{analysisId}</span>
-                    </div>
+              <div className="surface-muted" style={{ padding: 20 }}>
+                <div className="data-list">
+                  <div className="data-row">
+                    <span className="label">File</span>
+                    <span className="value" style={{ fontSize: "0.82rem" }}>{fileInfo?.name || "—"}</span>
+                  </div>
+                  <div className="data-row">
+                    <span className="label">Mode</span>
+                    <span className="value" style={{ textTransform: "capitalize" }}>{mediaLabel}</span>
+                  </div>
+                  <div className="data-row">
+                    <span className="label">ID</span>
+                    <span className="value mono" style={{ fontSize: "0.75rem" }}>{analysisId}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="surface-muted" style={{ padding: 24 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                  <ShieldCheck
-                    size={20}
-                    color="var(--accent)"
-                    style={{ marginTop: 2, flexShrink: 0 }}
-                  />
-                  <div>
-                    <div style={{ fontWeight: 700 }}>Secure handling</div>
-                    <p className="note" style={{ margin: "8px 0 0" }}>
-                      Media is prepared before request, then cleared after
-                      submission.
-                    </p>
-                  </div>
-                </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 10,
+                  padding: "14px 16px",
+                  border: "1px solid var(--line)",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--bg-2)",
+                }}
+              >
+                <ShieldCheck size={16} color="var(--text-3)" style={{ marginTop: 2, flexShrink: 0 }} />
+                <p className="note" style={{ margin: 0, fontSize: "0.82rem" }}>
+                  Media is cleared after submission.
+                </p>
               </div>
             </aside>
           </section>
