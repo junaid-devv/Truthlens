@@ -87,7 +87,7 @@ src/
     └── types.ts          # Shared TypeScript interfaces
 ```
 ## 🤝 Team
-*This project was built for [Insert Hackathon Name].*
+*This project was built for HackDataV1*
 
 - **Team Name : Dead Code** - Role (e.g., Full Stack Developer, UX Designer)
 - **Leader : Muhammad Junaid** - Role
