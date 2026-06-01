@@ -142,7 +142,7 @@ export default function CertificatePage() {
             <div
               ref={certRef}
               className="cert-surface cert-surface--enhanced"
-              style={{ padding: 32 }}
+              style={{ padding: "36px 32px" }}
             >
               <div className="cert-watermark">TruthLens</div>
 
@@ -151,54 +151,54 @@ export default function CertificatePage() {
                   <BrandMark compact />
                   <div className="cert-header-meta">
                     <div className="cert-kicker">Verification Certificate</div>
-                    <div className="note cert-subkicker">
+                    <div className="note cert-subkicker" style={{ fontSize: "0.85rem" }}>
                       {result.fileType} forensic analysis
                     </div>
                   </div>
                 </div>
 
                 <div className="cert-chip-row">
-                  <div className="cert-chip">
-                    <span className="label">Certificate ID</span>
-                    <span className="value mono cert-chip-value">{result.analysisId}</span>
+                  <div className="cert-chip" style={{ background: "var(--bg-2)" }}>
+                    <span className="label" style={{ fontSize: "0.78rem" }}>Certificate ID</span>
+                    <span className="value mono cert-chip-value" style={{ fontSize: "0.82rem", fontWeight: 500 }}>{result.analysisId}</span>
                   </div>
-                  <div className="cert-chip">
-                    <span className="label">Issued</span>
-                    <span className="value cert-chip-value">{formattedDate}</span>
+                  <div className="cert-chip" style={{ background: "var(--bg-2)" }}>
+                    <span className="label" style={{ fontSize: "0.78rem" }}>Issued</span>
+                    <span className="value cert-chip-value" style={{ fontSize: "0.82rem", fontWeight: 500 }}>{formattedDate}</span>
                   </div>
-                  <div className="cert-chip">
-                    <span className="label">Status</span>
-                    <span className={`pill ${verdictPillClass}`}>{verdictLabel}</span>
+                  <div className="cert-chip" style={{ background: "var(--bg-2)" }}>
+                    <span className="label" style={{ fontSize: "0.78rem" }}>Status</span>
+                    <span className={`pill ${verdictPillClass}`} style={{ fontSize: "0.68rem", minHeight: 22 }}>{verdictLabel}</span>
                   </div>
                 </div>
 
                 <div className="section-grid-2 cert-main-grid">
                   <div className="stack-md">
-                    <span className={`pill ${riskPillClass}`}>{result.risk_level} risk</span>
+                    <span className={`pill ${riskPillClass}`} style={{ fontSize: "0.68rem", minHeight: 22 }}>{result.risk_level} risk</span>
 
                     <div>
-                      <div className="result-score" style={{ color: riskColor }}>
+                      <div className="result-score" style={{ color: riskColor, fontSize: "4.2rem" }}>
                         {result.probability_ai_generated}%
                       </div>
-                      <div className="label" style={{ marginTop: 4 }}>
+                      <div className="label" style={{ marginTop: 4, fontSize: "0.78rem" }}>
                         AI generation probability
                       </div>
                     </div>
 
-                    <div className="stack-sm">
-                      <div style={{ fontWeight: 700, fontSize: "1rem" }}>
+                    <div className="stack-sm" style={{ marginTop: 12 }}>
+                      <div style={{ fontWeight: 600, fontSize: "1.1rem", lineHeight: 1.3 }}>
                         {result.verdict_sentence}
                       </div>
-                      <p className="note">{result.plain_language_explanation}</p>
+                      <p className="note" style={{ fontSize: "0.86rem" }}>{result.plain_language_explanation}</p>
                     </div>
 
-                    <div className="cert-recommendation">
-                      <div className="label">Recommended action</div>
-                      <p className="note">{result.recommended_action}</p>
+                    <div className="cert-recommendation" style={{ background: "var(--bg-2)" }}>
+                      <div className="label" style={{ fontSize: "0.8rem" }}>Recommended action</div>
+                      <p className="note" style={{ marginTop: 6, fontSize: "0.85rem" }}>{result.recommended_action}</p>
                     </div>
                   </div>
 
-                  <div className="cert-verify-card stack-md">
+                  <div className="cert-verify-card stack-md" style={{ background: "var(--bg-2)" }}>
                     <div
                       style={{
                         display: "flex",
@@ -209,31 +209,31 @@ export default function CertificatePage() {
                       }}
                     >
                       <div className="cert-seal">
-                        <AppLogo size={30} title="TruthLens logo" />
+                        <AppLogo size={24} title="TruthLens logo" />
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <span className={`pill ${verdictPillClass}`}>{verdictLabel}</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+                        <span className={`pill ${verdictPillClass}`} style={{ fontSize: "0.68rem", minHeight: 22 }}>{verdictLabel}</span>
                         <span
                           className="note"
-                          style={{ fontSize: "0.8rem", color: confidenceColor }}
+                          style={{ fontSize: "0.75rem", color: confidenceColor, fontWeight: 500 }}
                         >
                           Confidence: {result.confidence_in_verdict}
                         </span>
                       </div>
                     </div>
 
-                    <div className="data-list">
+                    <div className="data-list" style={{ marginTop: 12 }}>
                       {[
                         { l: "File", v: result.fileName },
                         { l: "File type", v: result.fileType },
                         { l: "Risk level", v: result.risk_level },
                         { l: "Cert ID", v: result.analysisId, mono: true },
                       ].map(({ l, v, mono }) => (
-                        <div key={l} className="data-row">
-                          <span className="label">{l}</span>
+                        <div key={l} className="data-row" style={{ padding: "8px 0" }}>
+                          <span className="label" style={{ fontSize: "0.8rem" }}>{l}</span>
                           <span
                             className={mono ? "value mono" : "value"}
-                            style={{ fontSize: mono ? "0.74rem" : undefined }}
+                            style={{ fontSize: mono ? "0.72rem" : "0.84rem", fontWeight: 500 }}
                           >
                             {v}
                           </span>
@@ -241,19 +241,19 @@ export default function CertificatePage() {
                       ))}
                     </div>
 
-                    <div className="cert-verify-link mono">{shareUrl}</div>
+                    <div className="cert-verify-link mono" style={{ background: "var(--bg)", border: "1px solid var(--line)" }}>{shareUrl}</div>
                   </div>
                 </div>
 
                 <div className="cert-footer">
                   <div>
                     <div className="cert-kicker">TruthLens Deepfake Detection</div>
-                    <p className="note cert-footer-note">
+                    <p className="note cert-footer-note" style={{ fontSize: "0.82rem" }}>
                       Generated from local analysis result and anchored to this
                       certificate ID.
                     </p>
                   </div>
-                  <div className="mono cert-footer-id">{result.analysisId}</div>
+                  <div className="mono cert-footer-id" style={{ fontSize: "0.75rem" }}>{result.analysisId}</div>
                 </div>
               </div>
             </div>

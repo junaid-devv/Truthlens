@@ -45,6 +45,21 @@ export interface AnalysisResult {
   plain_language_explanation: string;
   verdict_sentence: string;
   recommended_action: string;
+  transcription?: string;
+  scam_analysis?: {
+    is_scam: boolean;
+    scam_type: string;
+    details: string;
+    confidence: number;
+  };
+  image_models?: {
+    model: string;
+    modelId?: string;
+    verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN' | 'ERROR' | null;
+    confidence: number;
+    rawLabel?: string;
+    ran: boolean;
+  }[];
   error?: boolean;
   timestamp?: number;
 }

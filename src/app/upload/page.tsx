@@ -120,173 +120,178 @@ export default function UploadPage() {
   return (
     <>
       <Navbar />
-      <div className="page-content">
-        <main className="page-container page-narrow stack-lg">
-
-          <header className="page-intro fade-in">
-            <span className="eyebrow">Upload</span>
-            <h1 className="page-title">Select your file.</h1>
-            <p className="page-subtitle">
-              Choose a media type, drop the file, then run analysis.
-            </p>
-          </header>
-
-          {/* Media type picker */}
-          <div className="upload-types">
-            {mediaTypes.map((type) => {
-              const isSelected = selectedType === type.id;
-              return (
-                <button
-                  key={type.id}
-                  type="button"
-                  className={`choice-card${isSelected ? " is-selected" : ""}`}
-                  onClick={() => { setSelectedType(type.id); setFile(null); setError(""); }}
-                >
-                  <span className="choice-icon">
-                    <type.icon size={20} color={isSelected ? "var(--red)" : "var(--text-2)"} />
-                  </span>
-                  <div style={{ fontWeight: 700 }}>{type.label}</div>
-                  <p className="note" style={{ margin: "8px 0 0", fontSize: "0.83rem" }}>
-                    {type.description}
-                  </p>
-                  <div
-                    className="mono"
-                    style={{ marginTop: 12, color: "var(--text-3)", fontSize: "0.75rem" }}
-                  >
-                    {type.formats}
-                  </div>
-                </button>
-              );
-            })}
+      <div className="page-content" style={{ height: "calc(100vh - var(--header-h))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <main className="page-container" style={{ flex: 1, padding: "20px 0 28px", display: "flex", flexDirection: "column", gap: 16, justifyContent: "center", minHeight: 0 }}>
+          
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+            <div>
+              <span className="eyebrow" style={{ fontSize: "0.68rem" }}>Ingestion dashboard</span>
+              <h1 className="page-title" style={{ fontSize: "1.75rem", marginTop: 4, lineHeight: 1.2 }}>Select your file.</h1>
+            </div>
+            <span className="mono" style={{ fontSize: "0.72rem", color: "var(--text-3)", fontWeight: 600 }}>
+              [LIMIT: {MAX_SIZE_MB}MB]
+            </span>
           </div>
 
-          {/* Upload + sidebar */}
-          <div className="workspace-grid">
-            <div className="surface" style={{ padding: 22 }}>
-              <div className="stack-md">
-                {/* File chip */}
-                {file && (
-                  <div className="file-chip">
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      {(() => { const Icon = getFileIcon(file); return <Icon size={18} color="var(--red)" />; })()}
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>{file.name}</div>
-                        <div className="mono note" style={{ fontSize: "0.78rem" }}>
-                          {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || "Unknown"}
-                        </div>
-                      </div>
+          <div className="surface" style={{ flex: 1, display: "grid", gridTemplateColumns: "280px 1fr", minHeight: 0, overflow: "hidden" }}>
+            {/* Left Column: Media selectors */}
+            <div style={{ borderRight: "1px solid var(--line)", background: "var(--bg-2)", padding: 20, display: "flex", flexDirection: "column", gap: 12 }}>
+              <span className="eyebrow" style={{ fontSize: "0.65rem", marginBottom: 4 }}>1. Media Mode</span>
+              
+              {mediaTypes.map((type) => {
+                const isSelected = selectedType === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    type="button"
+                    onClick={() => { setSelectedType(type.id); setFile(null); setError(""); }}
+                    style={{
+                      width: "100%",
+                      padding: "14px 12px",
+                      borderRadius: "var(--r)",
+                      border: isSelected ? "1.5px solid var(--red)" : "1px solid var(--line)",
+                      background: isSelected ? "var(--red-dim)" : "var(--bg)",
+                      textAlign: "left",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      transition: "border-color 140ms, background 140ms"
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <type.icon size={15} color={isSelected ? "var(--red)" : "var(--text-2)"} />
+                      <span style={{ fontWeight: 600, fontSize: "0.88rem", color: isSelected ? "var(--text)" : "var(--text-2)" }}>{type.label}</span>
                     </div>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      onClick={() => { setFile(null); setError(""); }}
-                      aria-label="Remove file"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-                )}
+                    <span className="mono" style={{ fontSize: "0.68rem", color: "var(--text-3)", marginLeft: 25 }}>
+                      {type.formats}
+                    </span>
+                  </button>
+                );
+              })}
 
-                {/* Dropzone */}
-                <div
-                  className={`dropzone${dragOver ? " is-dragging" : ""}`}
-                  onClick={() => fileInputRef.current?.click()}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-                  onDragLeave={() => setDragOver(false)}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    setDragOver(false);
-                    const f = e.dataTransfer.files[0];
-                    if (f) handleFile(f);
-                  }}
-                >
-                  <span className="choice-icon" style={{ width: 52, height: 52, marginBottom: 14 }}>
-                    <Upload size={22} color="var(--red)" />
-                  </span>
-                  <div style={{ fontWeight: 700, fontSize: "1.05rem" }}>
-                    {dragOver ? "Drop to upload" : "Drop file here"}
-                  </div>
-                  <p className="note" style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
-                    Click to browse. Max {MAX_SIZE_MB} MB.
-                  </p>
-                  <div className="mono" style={{ marginTop: 12, color: "var(--text-3)", fontSize: "0.75rem" }}>
-                    {activeType?.formats || "mp3 · wav · jpg · png · mp4 · mov"}
-                  </div>
-                </div>
-
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  style={{ display: "none" }}
-                  accept={activeType?.accept || "audio/*,image/*,video/*"}
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
-                />
+              <div style={{ marginTop: "auto", paddingTop: 16, borderTop: "1px solid var(--line)", display: "flex", gap: 8, alignItems: "flex-start" }}>
+                <LockKeyhole size={13} color="var(--text-3)" style={{ marginTop: 2, flexShrink: 0 }} />
+                <p className="note" style={{ margin: 0, fontSize: "0.76rem", lineHeight: 1.4 }}>
+                  Files are processed client-side. Data remains local.
+                </p>
               </div>
             </div>
 
-            {/* Sidebar */}
-            <aside className="surface-muted" style={{ padding: 22 }}>
-              <div className="stack-md">
-                <div style={{ fontWeight: 700 }}>Before you submit</div>
+            {/* Right Column: Dropzone and launcher */}
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
+              <span className="eyebrow" style={{ fontSize: "0.65rem" }}>2. Ingestion</span>
 
-                <div className="data-list">
-                  <div className="data-row">
-                    <span className="label">Tip</span>
-                    <span className="value" style={{ fontSize: "0.83rem" }}>
-                      Select media type first
-                    </span>
-                  </div>
-                  <div className="data-row">
-                    <span className="label">Max size</span>
-                    <span className="value mono">{MAX_SIZE_MB} MB</span>
-                  </div>
-                  <div className="data-row">
-                    <span className="label">Privacy</span>
-                    <span className="value" style={{ fontSize: "0.83rem", textAlign: "right" }}>
-                      Client-side only
-                    </span>
-                  </div>
-                </div>
-
+              {error && (
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 10,
-                    padding: "12px 0 0",
-                    borderTop: "1px solid var(--line)",
+                    padding: "10px 14px",
+                    border: "1px solid var(--red-border)",
+                    borderRadius: "var(--r)",
+                    background: "var(--red-dim)",
+                    color: "var(--text)",
+                    fontSize: "0.82rem",
+                    flexShrink: 0
                   }}
                 >
-                  <LockKeyhole size={15} color="var(--text-3)" style={{ marginTop: 2, flexShrink: 0 }} />
-                  <p className="note" style={{ margin: 0, fontSize: "0.82rem" }}>
-                    Files are prepared in-browser. History is stored locally.
-                  </p>
+                  {error}
                 </div>
+              )}
 
-                {error && (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                {file ? (
                   <div
                     style={{
-                      padding: "12px 14px",
-                      border: "1px solid var(--red-border)",
-                      borderRadius: "var(--r)",
-                      background: "var(--red-dim)",
-                      color: "var(--text)",
-                      fontSize: "0.85rem",
+                      flex: 1,
+                      border: "1.5px solid var(--line-2)",
+                      borderRadius: "var(--r-lg)",
+                      background: "var(--bg-2)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      padding: 24,
+                      textAlign: "center"
                     }}
                   >
-                    {error}
+                    <span className="choice-icon" style={{ width: 52, height: 52, marginBottom: 16, border: "1px solid var(--line)", background: "var(--surface)" }}>
+                      {(() => { const Icon = getFileIcon(file); return <Icon size={22} color="var(--red)" />; })()}
+                    </span>
+                    <div style={{ fontWeight: 600, fontSize: "1.05rem", maxWidth: "90%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {file.name}
+                    </div>
+                    <div className="mono note" style={{ fontSize: "0.8rem", marginTop: 6 }}>
+                      {(file.size / 1024 / 1024).toFixed(2)} MB · {file.type || "Unknown"}
+                    </div>
+
+                    <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+                      <button
+                        type="button"
+                        className="button button-secondary"
+                        onClick={() => { setFile(null); setError(""); }}
+                        style={{ minHeight: 38, fontSize: "0.8rem" }}
+                      >
+                        Change File
+                      </button>
+                      <button
+                        type="button"
+                        className="button button-primary"
+                        onClick={handleAnalyze}
+                        style={{ minHeight: 38, fontSize: "0.8rem" }}
+                      >
+                        Run Forensic Scan
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className={`dropzone${dragOver ? " is-dragging" : ""}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setDragOver(false);
+                      const f = e.dataTransfer.files[0];
+                      if (f) handleFile(f);
+                    }}
+                    style={{
+                      flex: 1,
+                      border: "1.5px dashed var(--line-2)",
+                      borderRadius: "var(--r-lg)",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      padding: 24
+                    }}
+                  >
+                    <span className="choice-icon" style={{ width: 44, height: 44, marginBottom: 12, border: "1px solid var(--line)", background: "var(--surface)" }}>
+                      <Upload size={18} color="var(--red)" />
+                    </span>
+                    <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>
+                      {dragOver ? "Drop to upload" : "Drop media file here"}
+                    </div>
+                    <p className="note" style={{ margin: "6px 0 0", fontSize: "0.82rem" }}>
+                      Click to browse. Max {MAX_SIZE_MB} MB.
+                    </p>
+                    {activeType && (
+                      <span className="pill pill-accent" style={{ marginTop: 12, fontSize: "0.68rem" }}>
+                        Accepts: {activeType.formats}
+                      </span>
+                    )}
                   </div>
                 )}
-
-                <button
-                  type="button"
-                  className="button button-primary button-wide"
-                  onClick={handleAnalyze}
-                >
-                  Run Analysis
-                </button>
               </div>
-            </aside>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                style={{ display: "none" }}
+                accept={activeType?.accept || "audio/*,image/*,video/*"}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
+              />
+            </div>
           </div>
         </main>
       </div>

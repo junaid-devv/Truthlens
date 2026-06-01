@@ -4,10 +4,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   AudioLines,
-  FileCheck2,
   Image as ImageIcon,
-  ScanSearch,
-  ShieldCheck,
   Video,
 } from "lucide-react";
 import Navbar from "@/components/Navbar";
@@ -34,18 +31,6 @@ const detectionStack = [
   },
 ];
 
-const workflow = [
-  { step: "01", title: "Upload", copy: "Audio, image, or video — up to 50 MB." },
-  { step: "02", title: "Analyze", copy: "Multi-model pipeline runs in under 25 seconds." },
-  { step: "03", title: "Export", copy: "Risk verdict, evidence summary, and certificate." },
-];
-
-const useCases = [
-  { icon: ShieldCheck, title: "Fraud response", copy: "Validate suspicious calls and forwarded media." },
-  { icon: ScanSearch, title: "Newsroom checks", copy: "Screen UGC before publication." },
-  { icon: FileCheck2, title: "Operations", copy: "Create shareable proof for internal review." },
-];
-
 export default function HomePage() {
   return (
     <>
@@ -55,7 +40,7 @@ export default function HomePage() {
 
           {/* Hero */}
           <section className="hero-grid fade-in">
-            <div>
+            <div style={{ alignSelf: "center" }}>
               <span className="eyebrow">Voice · Image · Video</span>
               <h1 className="page-title">
                 Detect deepfakes.<br />Act on evidence.
@@ -89,102 +74,38 @@ export default function HomePage() {
               </div>
             </div>
 
-            {/* Detection stack card */}
-            <aside className="surface" style={{ padding: 24 }}>
-              <div className="stack-md">
-                <span className="eyebrow">Detection stack</span>
+            {/* System Status Visualizer */}
+            <aside className="surface" style={{ padding: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+              {/* Scan HUD image overlay */}
+              <div style={{ position: "relative", width: "100%", height: 210, background: "#050b18", borderBottom: "1px solid var(--line)", overflow: "hidden" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/hud_scanner.png" alt="HUD Scanner" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.85 }} />
+                <span className="pill pill-accent" style={{ position: "absolute", top: 12, right: 12, background: "rgba(2, 6, 23, 0.8)", borderColor: "var(--red-border)" }}>
+                  ● SCANNER ACTIVE
+                </span>
+              </div>
+              <div style={{ padding: 22 }} className="stack-md">
+                <span className="eyebrow" style={{ fontSize: "0.68rem" }}>Detection stack status</span>
 
                 {detectionStack.map((item, i) => (
-                  <div key={item.title} className={`signal-row${i === 0 ? " is-emphasis" : ""}`}>
-                    <span className="signal-icon">
-                      <item.icon size={18} color={i === 0 ? "var(--red)" : "var(--text-2)"} />
+                  <div key={item.title} className="signal-row" style={{ padding: "8px 0" }}>
+                    <span className="brand-mark__badge compact" style={{ border: "1px solid var(--line)" }}>
+                      <item.icon size={13} color="var(--text-2)" />
                     </span>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>{item.title}</div>
-                      <div className="note" style={{ fontSize: "0.83rem" }}>{item.description}</div>
+                      <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>{item.title}</div>
+                      <div className="note" style={{ fontSize: "0.78rem" }}>{item.description}</div>
                     </div>
-                    <span className={`pill ${i === 0 ? "pill-accent" : "pill-success"}`}>
+                    <span className="pill pill-success" style={{ fontSize: "0.68rem", paddingInline: 8, minHeight: 22 }}>
                       {item.status}
                     </span>
                   </div>
                 ))}
-
-                <div className="section-divider" />
-
-                <div className="signal-row">
-                  <span className="signal-icon">
-                    <FileCheck2 size={18} color="var(--text-2)" />
-                  </span>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>Certificate output</div>
-                    <div className="note" style={{ fontSize: "0.83rem" }}>Exportable verdict and evidence.</div>
-                  </div>
-                  <span className="pill pill-success">Included</span>
-                </div>
               </div>
             </aside>
           </section>
 
-          {/* Workflow */}
-          <section className="stack-lg">
-            <span className="eyebrow">How it works</span>
-            <div className="surface" style={{ padding: "4px 24px" }}>
-              {workflow.map((item) => (
-                <div key={item.step} className="definition-row" style={{ alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <span
-                      className="mono"
-                      style={{ color: "var(--text-3)", fontSize: "0.75rem", letterSpacing: "0.08em" }}
-                    >
-                      {item.step}
-                    </span>
-                    <div style={{ fontSize: "1rem", fontWeight: 700 }}>{item.title}</div>
-                  </div>
-                  <p className="note" style={{ margin: 0 }}>{item.copy}</p>
-                </div>
-              ))}
-            </div>
-          </section>
 
-          {/* Use cases */}
-          <section className="section-grid-3">
-            {useCases.map((item) => (
-              <div key={item.title} className="surface-muted" style={{ padding: 22 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                  <span className="signal-icon" style={{ width: 36, height: 36 }}>
-                    <item.icon size={16} color="var(--red)" />
-                  </span>
-                  <div style={{ fontWeight: 700, fontSize: "0.92rem" }}>{item.title}</div>
-                </div>
-                <p className="note" style={{ margin: 0, fontSize: "0.88rem" }}>{item.copy}</p>
-              </div>
-            ))}
-          </section>
-
-          {/* CTA */}
-          <section className="surface" style={{ padding: "28px 32px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 20,
-                flexWrap: "wrap",
-              }}
-            >
-              <div>
-                <h2 className="section-title" style={{ fontSize: "1.6rem" }}>
-                  Start your analysis now.
-                </h2>
-                <p className="note" style={{ marginTop: 6 }}>
-                  Upload media, run the stack, get a verdict you can act on.
-                </p>
-              </div>
-              <Link href="/upload" className="button button-primary">
-                Open Analyzer <ArrowRight size={16} />
-              </Link>
-            </div>
-          </section>
 
           {/* Footer */}
           <footer

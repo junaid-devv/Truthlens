@@ -124,45 +124,50 @@ export default function ResultsPage() {
               <div className="stack-md">
                 <span className={`pill ${riskPillClass}`}>{result.risk_level} risk</span>
 
-                <div className="section-grid-2" style={{ alignItems: "start", gap: 20 }}>
+                <div className="section-grid-2" style={{ alignItems: "start", gap: 24 }}>
                   <div className="stack-sm">
                     <h2
                       style={{
                         margin: 0,
                         fontFamily: "var(--font-display)",
-                        fontSize: "1.5rem",
-                        fontWeight: 800,
-                        letterSpacing: "-0.03em",
-                        lineHeight: 1.1,
+                        fontSize: "1.45rem",
+                        fontWeight: 600,
+                        letterSpacing: "-0.02em",
+                        lineHeight: 1.25,
                       }}
                     >
                       {result.verdict_sentence}
                     </h2>
-                    <p className="note">{result.plain_language_explanation}</p>
+                    <p className="note" style={{ marginTop: 8 }}>{result.plain_language_explanation}</p>
                   </div>
 
                   <div>
-                    <div className="result-score" style={{ color: riskColor }}>
-                      {result.probability_ai_generated}%
+                    <div className="result-score" style={{ color: (result.overall_verdict === "REAL" || result.overall_verdict === "UNCERTAIN") ? "var(--green)" : riskColor }}>
+                      {(result.overall_verdict === "REAL" || result.overall_verdict === "UNCERTAIN") ? (100 - result.probability_ai_generated) : result.probability_ai_generated}%
                     </div>
-                    <div className="label" style={{ marginTop: 4 }}>AI generation probability</div>
+                    <div className="label" style={{ marginTop: 6, fontSize: "0.78rem" }}>
+                      {(result.overall_verdict === "REAL" || result.overall_verdict === "UNCERTAIN") ? "AUTHENTICITY PROBABILITY" : "AI GENERATION PROBABILITY"}
+                    </div>
                   </div>
                 </div>
 
                 {/* Progress bar */}
-                <div className="stack-sm">
+                <div className="stack-sm" style={{ marginTop: 12 }}>
                   <div
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      fontSize: "0.75rem",
+                      fontSize: "0.72rem",
                       color: "var(--text-3)",
                       fontFamily: "var(--font-mono)",
                     }}
                   >
                     <span>0%</span><span>50%</span><span>100%</span>
                   </div>
-                  <ProgressBar value={result.probability_ai_generated} color={riskColor} />
+                  <ProgressBar 
+                    value={(result.overall_verdict === "REAL" || result.overall_verdict === "UNCERTAIN") ? (100 - result.probability_ai_generated) : result.probability_ai_generated} 
+                    color={(result.overall_verdict === "REAL" || result.overall_verdict === "UNCERTAIN") ? "var(--green)" : riskColor} 
+                  />
                 </div>
 
                 {/* Recommended action */}
@@ -175,14 +180,15 @@ export default function ResultsPage() {
                     border: "1px solid var(--line)",
                     borderRadius: "var(--r)",
                     background: "var(--bg-2)",
+                    marginTop: 12
                   }}
                 >
-                  <AlertTriangle size={16} color={riskColor} style={{ marginTop: 2, flexShrink: 0 }} />
+                  <AlertTriangle size={15} color={riskColor} style={{ marginTop: 2, flexShrink: 0 }} />
                   <div>
-                    <div style={{ fontWeight: 700, color: riskColor, fontSize: "0.88rem" }}>
+                    <div style={{ fontWeight: 600, color: riskColor, fontSize: "0.85rem" }}>
                       Recommended action
                     </div>
-                    <p className="note" style={{ marginTop: 6 }}>{result.recommended_action}</p>
+                    <p className="note" style={{ marginTop: 4, fontSize: "0.85rem" }}>{result.recommended_action}</p>
                   </div>
                 </div>
               </div>
@@ -190,25 +196,25 @@ export default function ResultsPage() {
 
             {/* At a glance */}
             <aside>
-              <div className="surface-muted" style={{ padding: 20 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <ShieldCheck size={15} color="var(--text-3)" />
-                  <div style={{ fontWeight: 700, fontSize: "0.88rem" }}>At a glance</div>
+              <div className="surface" style={{ padding: 22 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <ShieldCheck size={14} color="var(--text-3)" />
+                  <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>At a glance</div>
                 </div>
                 <div className="data-list">
                   {[
                     { l: "Verdict", v: getVerdictLabel(result.overall_verdict), c: verdictColor },
                     { l: "Risk", v: result.risk_level, c: riskColor },
                     { l: "Confidence", v: result.confidence_in_verdict, c: confidenceColor },
-                    { l: "Content type", v: result.content_classification.likely_type || "â€”" },
+                    { l: "Content type", v: result.content_classification.likely_type || "—" },
                     { l: "Emotion", v: emotionValue },
                     { l: "ID", v: result.analysisId, mono: true },
                   ].map(({ l, v, c, mono }) => (
-                    <div key={l} className="data-row">
-                      <span className="label">{l}</span>
+                    <div key={l} className="data-row" style={{ padding: "10px 0" }}>
+                      <span className="label" style={{ fontSize: "0.82rem" }}>{l}</span>
                       <span
                         className={mono ? "value mono" : "value"}
-                        style={c ? { color: c, fontSize: mono ? "0.72rem" : undefined } : { fontSize: mono ? "0.72rem" : undefined }}
+                        style={c ? { color: c, fontSize: mono ? "0.72rem" : "0.85rem", fontWeight: 600 } : { fontSize: mono ? "0.72rem" : "0.85rem", fontWeight: 600 }}
                       >
                         {v}
                       </span>
@@ -245,13 +251,13 @@ export default function ResultsPage() {
                   { l: "Matched scenario", v: result.content_classification.matched_scenario },
                   { l: "Suggested scenario", v: result.suggested_scenario },
                 ].map(({ l, v, cap }) => (
-                  <div key={l} className="summary-cell">
-                    <div className="label">{l}</div>
+                  <div key={l} className="summary-cell" style={{ background: "var(--bg)" }}>
+                    <div className="label" style={{ fontSize: "0.8rem" }}>{l}</div>
                     <div
                       style={{
                         marginTop: 6,
-                        fontWeight: 700,
-                        fontSize: "0.9rem",
+                        fontWeight: 600,
+                        fontSize: "0.88rem",
                         textTransform: cap ? "capitalize" : undefined,
                       }}
                     >

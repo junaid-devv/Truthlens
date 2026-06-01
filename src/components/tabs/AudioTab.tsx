@@ -1,6 +1,6 @@
 "use client";
 
-import { Activity, AudioLines, Gauge, ShieldAlert } from "lucide-react";
+import { Activity, AudioLines, Gauge, ShieldAlert, FileText, CheckCircle2 } from "lucide-react";
 import { AnalysisResult, getRiskColor } from "@/lib/types";
 
 function ArtifactItem({ text }: { text: string }) {
@@ -22,8 +22,8 @@ function WaveformViz() {
   });
 
   return (
-    <div className="surface-muted" style={{ padding: 20 }}>
-      <div style={{ fontWeight: 700, marginBottom: 14 }}>Waveform review</div>
+    <div className="surface" style={{ padding: 20, background: "var(--bg)" }}>
+      <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: 14 }}>Waveform review</div>
       <div
         style={{
           height: 92,
@@ -82,93 +82,139 @@ export default function AudioTab({ result }: { result: AnalysisResult }) {
   return (
     <div className="section-grid-2">
       <div className="stack-md">
-        <div className="surface-muted" style={{ padding: 24 }}>
+
+
+        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <AudioLines size={18} color="var(--accent)" />
-            <div style={{ fontWeight: 700 }}>Audio deepfake score</div>
-          </div>
-
-          <div className="result-score status-value" style={{ color: riskColor }}>
-            {result.probability_ai_generated}%
-          </div>
-          <div className="note" style={{ marginTop: 6 }}>
-            Estimated audio deepfake probability.
-          </div>
-
-          <div style={{ marginTop: 18 }}>
-            <ProgressSection
-              label="Model score"
-              value={result.probability_ai_generated}
-              color={riskColor}
-            />
-          </div>
-        </div>
-
-        <div className="surface-muted" style={{ padding: 24 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <ShieldAlert size={18} color="var(--accent)" />
-            <div style={{ fontWeight: 700 }}>Detected artifacts</div>
+            <ShieldAlert size={16} color="var(--red)" />
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Detected artifacts</div>
           </div>
           {result.audio_artifacts.length > 0 ? (
             result.audio_artifacts.map((artifact) => (
               <ArtifactItem key={artifact} text={artifact} />
             ))
           ) : (
-            <p className="note" style={{ margin: 0 }}>
+            <p className="note" style={{ margin: 0, fontSize: "0.86rem" }}>
               No audio artifacts returned in this run.
             </p>
           )}
         </div>
+
+        {result.scam_analysis && (
+          <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              {result.scam_analysis.is_scam ? (
+                <ShieldAlert size={16} color="var(--danger)" />
+              ) : (
+                <CheckCircle2 size={16} color="var(--success)" />
+              )}
+              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Scam & fraud scanning</div>
+            </div>
+            
+            <div
+              style={{
+                padding: 16,
+                borderRadius: "var(--r)",
+                border: `1px solid ${result.scam_analysis.is_scam ? "rgba(239, 68, 68, 0.2)" : "rgba(34, 197, 148, 0.2)"}`,
+                background: result.scam_analysis.is_scam ? "rgba(239, 68, 68, 0.04)" : "rgba(34, 197, 148, 0.04)",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+                <span
+                  style={{
+                    fontSize: "0.82rem",
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    color: result.scam_analysis.is_scam ? "var(--danger)" : "var(--success)",
+                  }}
+                >
+                  {result.scam_analysis.is_scam ? `Scam Detected: ${result.scam_analysis.scam_type}` : "No Scam Patterns Identified"}
+                </span>
+                <span className="mono" style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+                  Confidence: {result.scam_analysis.confidence}%
+                </span>
+              </div>
+              <p className="note" style={{ marginTop: 8, color: "var(--text-soft)", fontSize: "0.85rem" }}>
+                {result.scam_analysis.details}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="stack-md">
         <WaveformViz />
 
-        <div className="surface-muted" style={{ padding: 24 }}>
+        {result.transcription && (
+          <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <FileText size={16} color="var(--red)" />
+              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Speech transcription</div>
+            </div>
+            <div
+              style={{
+                maxHeight: 180,
+                overflowY: "auto",
+                padding: 14,
+                background: "var(--bg-2)",
+                border: "1px solid var(--line)",
+                borderRadius: "var(--r)",
+                fontSize: "0.88rem",
+                lineHeight: 1.5,
+                whiteSpace: "pre-wrap",
+                color: "var(--text-soft)",
+              }}
+            >
+              {result.transcription}
+            </div>
+          </div>
+        )}
+
+        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <Activity size={18} color="var(--accent)" />
-            <div style={{ fontWeight: 700 }}>Consistency review</div>
+            <Activity size={16} color="var(--red)" />
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Consistency review</div>
           </div>
 
           <div className="summary-grid">
-            <div className="summary-cell">
-              <div className="label">Detected emotion</div>
-              <div style={{ marginTop: 8, fontWeight: 700 }}>
+            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
+              <div className="label" style={{ fontSize: "0.8rem" }}>Detected emotion</div>
+              <div style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem" }}>
                 {result.emotion_consistency.detected_emotion}
               </div>
             </div>
-            <div className="summary-cell">
-              <div className="label">Claimed context</div>
-              <div style={{ marginTop: 8, fontWeight: 700 }}>
+            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
+              <div className="label" style={{ fontSize: "0.8rem" }}>Claimed context</div>
+              <div style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem" }}>
                 {result.emotion_consistency.claimed_context}
               </div>
             </div>
-            <div className="summary-cell">
-              <div className="label">Consistency score</div>
+            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
+              <div className="label" style={{ fontSize: "0.8rem" }}>Consistency score</div>
               <div
                 className="status-value"
-                style={{ marginTop: 8, fontWeight: 700, color: consistencyColor }}
+                style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem", color: consistencyColor }}
               >
                 {consistency}%
               </div>
             </div>
-            <div className="summary-cell">
-              <div className="label">Model confidence</div>
-              <div className="status-value" style={{ marginTop: 8, fontWeight: 700 }}>
+            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
+              <div className="label" style={{ fontSize: "0.8rem" }}>Model confidence</div>
+              <div className="status-value" style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem" }}>
                 {confidenceValue}%
               </div>
             </div>
           </div>
 
-          <p className="note" style={{ margin: "18px 0 0" }}>
+          <p className="note" style={{ margin: "18px 0 0", fontSize: "0.86rem" }}>
             {result.emotion_consistency.explanation}
           </p>
         </div>
 
-        <div className="surface-muted" style={{ padding: 24 }}>
+        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <Gauge size={18} color="var(--accent)" />
-            <div style={{ fontWeight: 700 }}>Confidence breakdown</div>
+            <Gauge size={16} color="var(--red)" />
+            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Confidence breakdown</div>
           </div>
           <div className="stack-sm">
             <ProgressSection
@@ -213,8 +259,8 @@ function ProgressSection({
           marginBottom: 8,
         }}
       >
-        <span className="label">{label}</span>
-        <span className="mono" style={{ color, fontWeight: 700 }}>
+        <span className="label" style={{ fontSize: "0.82rem" }}>{label}</span>
+        <span className="mono" style={{ color, fontWeight: 600, fontSize: "0.85rem" }}>
           {value}%
         </span>
       </div>

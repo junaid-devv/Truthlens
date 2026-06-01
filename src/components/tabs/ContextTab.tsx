@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Network, Quote } from "lucide-react";
+import { AlertTriangle, Network, Quote, Shield } from "lucide-react";
 import { AnalysisResult } from "@/lib/types";
 
 export default function ContextTab({ result }: { result: AnalysisResult }) {
@@ -76,6 +76,45 @@ export default function ContextTab({ result }: { result: AnalysisResult }) {
             </div>
           </div>
         </div>
+
+        {result.scam_analysis && result.scam_analysis.is_scam && (
+          <div className="surface-muted" style={{ padding: 24, border: "1px solid rgba(239, 68, 68, 0.25)", background: "rgba(239, 68, 68, 0.03)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <AlertTriangle size={18} color="var(--danger)" />
+              <div style={{ fontWeight: 700, color: "var(--danger)" }}>Scam / Fraud Detected</div>
+            </div>
+            
+            <div className="summary-grid" style={{ marginBottom: 16 }}>
+              <div className="summary-cell">
+                <div className="label">Scam type</div>
+                <div style={{ marginTop: 8, fontWeight: 700, color: "var(--danger)" }}>
+                  {result.scam_analysis.scam_type}
+                </div>
+              </div>
+              <div className="summary-cell">
+                <div className="label">Analysis confidence</div>
+                <div style={{ marginTop: 8, fontWeight: 700 }}>
+                  {result.scam_analysis.confidence}%
+                </div>
+              </div>
+            </div>
+            <p className="note" style={{ margin: 0, color: "var(--text-soft)" }}>
+              {result.scam_analysis.details}
+            </p>
+          </div>
+        )}
+
+        {result.scam_analysis && !result.scam_analysis.is_scam && (
+          <div className="surface-muted" style={{ padding: 24, border: "1px solid rgba(34, 197, 94, 0.2)", background: "rgba(34, 197, 94, 0.02)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+              <Shield size={18} color="var(--success)" />
+              <div style={{ fontWeight: 700, color: "var(--success)" }}>Scam Scan Clean</div>
+            </div>
+            <p className="note" style={{ margin: 0, color: "var(--text-soft)" }}>
+              No phishing, social engineering, or fraudulent speech patterns were identified in this media file.
+            </p>
+          </div>
+        )}
 
         <div className="surface-muted" style={{ padding: 24 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>

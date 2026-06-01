@@ -94,23 +94,24 @@ export default function HistoryPage() {
           </header>
 
           {/* Filters */}
-          <div className="section-grid-2" style={{ gap: 10 }}>
+          <div className="section-grid-2" style={{ gap: 12 }}>
             <label
               className="surface"
               style={{
-                padding: "0 14px",
-                minHeight: 42,
+                padding: "0 16px",
+                minHeight: 44,
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
+                gap: 12,
                 cursor: "text",
+                background: "var(--bg-2)",
               }}
             >
               <Search size={15} color="var(--text-3)" />
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-                placeholder="Search by filename"
+                placeholder="Search by filename..."
                 style={{
                   width: "100%",
                   background: "transparent",
@@ -126,14 +127,15 @@ export default function HistoryPage() {
               value={typeFilter}
               onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
               style={{
-                minHeight: 42,
-                padding: "0 14px",
+                minHeight: 44,
+                padding: "0 16px",
                 background: "var(--surface)",
                 color: "var(--text)",
                 borderRadius: "var(--r-md)",
                 border: "1px solid var(--line)",
                 outline: 0,
                 fontSize: "0.88rem",
+                cursor: "pointer",
               }}
             >
               <option value="all">All types</option>
@@ -145,18 +147,18 @@ export default function HistoryPage() {
 
           {/* Empty state */}
           {history.length === 0 ? (
-            <section className="surface empty-state">
-              <div className="signal-icon" style={{ margin: "0 auto 16px", width: 44, height: 44 }}>
-                <History size={20} color="var(--text-3)" />
+            <section className="surface empty-state" style={{ background: "var(--bg-2)" }}>
+              <div className="signal-icon" style={{ margin: "0 auto 16px", width: 40, height: 40, border: "1px solid var(--line)" }}>
+                <History size={16} color="var(--text-3)" />
               </div>
-              <div style={{ fontWeight: 700 }}>No analyses yet</div>
-              <p className="note" style={{ margin: "10px auto 0", maxWidth: 380, fontSize: "0.88rem" }}>
+              <div style={{ fontWeight: 600, fontSize: "1.05rem" }}>No analyses yet</div>
+              <p className="note" style={{ margin: "8px auto 0", maxWidth: 360, fontSize: "0.86rem" }}>
                 Run an analysis — it will appear here.
               </p>
             </section>
           ) : (
-            <section className="history-table">
-              <div className="history-head">
+            <section className="history-table" style={{ background: "var(--surface)", border: "1px solid var(--line)" }}>
+              <div className="history-head" style={{ background: "var(--bg-2)" }}>
                 <span>File</span>
                 <span>Type</span>
                 <span>Verdict</span>
@@ -166,8 +168,8 @@ export default function HistoryPage() {
               </div>
 
               {visible.length === 0 ? (
-                <div className="empty-state" style={{ padding: "40px 24px" }}>
-                  <div style={{ fontWeight: 700 }}>No results</div>
+                <div className="empty-state" style={{ padding: "48px 24px" }}>
+                  <div style={{ fontWeight: 600 }}>No results found</div>
                   <p className="note" style={{ margin: "8px 0 0", fontSize: "0.85rem" }}>
                     Try a different filter.
                   </p>
@@ -185,18 +187,19 @@ export default function HistoryPage() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleView(entry); }
                       }}
+                      style={{ padding: "14px 20px" }}
                     >
                       {/* File info */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                        <span className="signal-icon" style={{ width: 32, height: 32, flexShrink: 0 }}>
-                          {entry.fileType === "audio" && <Mic size={14} color="var(--red)" />}
-                          {entry.fileType === "image" && <ImageIcon size={14} color="#60c7ff" />}
-                          {entry.fileType === "video" && <Video size={14} color="#8b9fff" />}
+                        <span className="brand-mark__badge compact" style={{ width: 30, height: 30, border: "1px solid var(--line)", background: "var(--bg-2)" }}>
+                          {entry.fileType === "audio" && <Mic size={13} color="var(--red)" />}
+                          {entry.fileType === "image" && <ImageIcon size={13} color="#60c7ff" />}
+                          {entry.fileType === "video" && <Video size={13} color="#8b9fff" />}
                         </span>
                         <div style={{ minWidth: 0 }}>
                           <div
                             style={{
-                              fontWeight: 600,
+                              fontWeight: 500,
                               fontSize: "0.88rem",
                               overflow: "hidden",
                               textOverflow: "ellipsis",
@@ -205,17 +208,19 @@ export default function HistoryPage() {
                           >
                             {entry.fileName}
                           </div>
-                          <div className="mono note" style={{ fontSize: "0.72rem" }}>{entry.analysisId}</div>
+                          <div className="mono note" style={{ fontSize: "0.72rem", marginTop: 2 }}>{entry.analysisId}</div>
                         </div>
                       </div>
 
                       <TypeBadge type={entry.fileType} />
 
-                      <span className="pill">{getVerdictLabel(entry.verdict)}</span>
+                      <span>
+                        <span className="pill" style={{ fontSize: "0.68rem", minHeight: 22, paddingInline: 8 }}>{getVerdictLabel(entry.verdict)}</span>
+                      </span>
 
                       <span
                         className="mono"
-                        style={{ color: riskColor, fontWeight: 700, fontSize: "0.88rem" }}
+                        style={{ color: riskColor, fontWeight: 600, fontSize: "0.85rem" }}
                       >
                         {entry.probability}%
                       </span>
@@ -232,6 +237,7 @@ export default function HistoryPage() {
                           if (visible.length === 1 && page > 1) setPage((p) => p - 1);
                         }}
                         aria-label={`Delete ${entry.fileName}`}
+                        style={{ width: 32, height: 32 }}
                       >
                         <Trash2 size={13} />
                       </button>
