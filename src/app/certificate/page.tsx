@@ -86,7 +86,7 @@ export default function CertificatePage() {
     try {
       const { default: html2canvas } = await import("html2canvas");
       const canvas = await html2canvas(certRef.current, {
-        backgroundColor: "#08162d",
+        backgroundColor: "#02070d",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -107,7 +107,7 @@ export default function CertificatePage() {
       const { default: html2canvas } = await import("html2canvas");
       const { jsPDF } = await import("jspdf");
       const canvas = await html2canvas(certRef.current, {
-        backgroundColor: "#08162d",
+        backgroundColor: "#02070d",
         scale: 2,
         useCORS: true,
         logging: false,
@@ -131,10 +131,11 @@ export default function CertificatePage() {
       <div className="page-content">
         <main className="page-container stack-lg">
           <header className="page-intro fade-in">
-            <span className="eyebrow">Certificate</span>
-            <h1 className="page-title">Verification ready.</h1>
+            <span className="eyebrow">Evidence certificate</span>
+            <h1 className="page-title">Forensic proof sheet.</h1>
             <p className="page-subtitle">
-              Export or share an audit-ready proof sheet for this analysis.
+              Export a compact, audit-ready record of the verdict, confidence,
+              and case identifier.
             </p>
           </header>
 
@@ -150,7 +151,7 @@ export default function CertificatePage() {
                 <div className="cert-header-row">
                   <BrandMark compact />
                   <div className="cert-header-meta">
-                    <div className="cert-kicker">Verification Certificate</div>
+                    <div className="cert-kicker">Forensic Certificate</div>
                     <div className="note cert-subkicker" style={{ fontSize: "0.85rem" }}>
                       {result.fileType} forensic analysis
                     </div>
@@ -249,8 +250,8 @@ export default function CertificatePage() {
                   <div>
                     <div className="cert-kicker">TruthLens Deepfake Detection</div>
                     <p className="note cert-footer-note" style={{ fontSize: "0.82rem" }}>
-                      Generated from local analysis result and anchored to this
-                      certificate ID.
+                      Generated from the local case result and anchored to this
+                      certificate identifier.
                     </p>
                   </div>
                   <div className="mono cert-footer-id" style={{ fontSize: "0.75rem" }}>{result.analysisId}</div>
@@ -282,15 +283,15 @@ export default function CertificatePage() {
               <div className="surface-muted" style={{ padding: 16 }}>
                 <p className="note" style={{ margin: 0, fontSize: "0.83rem" }}>
                   Includes verdict, confidence, risk score, timestamp, and
-                  verification ID.
+                  verification identifier.
                 </p>
               </div>
 
               <Link href="/results" className="button button-secondary button-wide">
-                {"<- Results"}
+                Back to Results
               </Link>
               <Link href="/upload" className="button button-secondary button-wide">
-                New Analysis
+                New Case
               </Link>
             </aside>
           </section>

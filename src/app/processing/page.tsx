@@ -4,7 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, Clock3, LoaderCircle, ShieldCheck } from "lucide-react";
 import Navbar from "@/components/Navbar";
-import { getFileStoreMeta, getFileStoreDataUrl } from "@/lib/fileStore";
+import {
+  getFileStoreMeta,
+  getFileStoreDataUrl,
+  type PendingFileMeta,
+} from "@/lib/fileStore";
 import {
   adaptImageResult,
   adaptAudioResult,
@@ -22,7 +26,7 @@ function getPipelineSteps(mediaType: string) {
       { id: "intake",   label: "Privacy filter",           model: "Client-side intake" },
       { id: "siglip",  label: "SigLIP2 deepfake scan",     model: "prithivMLmods/deepfake-detector-v1" },
       { id: "sdxl",    label: "SDXL generation detector",  model: "Organika/sdxl-detector" },
-      { id: "aiimg",   label: "AI image fingerprinting",   model: "haywoodsloan/ai-image-detector" },
+      { id: "aiimg",   label: "AI image fingerprinting",   model: "haywoodsloan/ai-image-detector-dev-deploy" },
       { id: "verdict", label: "Weighted verdict",          model: "Aggregator" },
       { id: "cert",    label: "Certificate preparation",   model: "Report engine" },
     ];
@@ -49,53 +53,31 @@ function getPipelineSteps(mediaType: string) {
   ];
 }
 
-function CircularProgress({ pct }: { pct: number }) {
-  const radius = 72;
-  const circ = 2 * Math.PI * radius;
-  const offset = circ - (pct / 100) * circ;
-
-  return (
-    <svg viewBox="0 0 180 180" aria-hidden="true">
-      <circle cx="90" cy="90" r={radius} fill="none" stroke="var(--line-2)" strokeWidth="8" />
-      <circle
-        cx="90" cy="90" r={radius}
-        fill="none"
-        stroke="var(--red)"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeDasharray={circ}
-        strokeDashoffset={offset}
-        transform="rotate(-90 90 90)"
-        style={{ transition: "stroke-dashoffset 600ms ease" }}
-      />
-    </svg>
-  );
-}
-
 export default function ProcessingPage() {
   const router = useRouter();
   const apiCalledRef = useRef(false);
 
-  const [hasMounted, setHasMounted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
   const [progress, setProgress] = useState(0);
-  const [fileInfo, setFileInfo] = useState<any>(null);
-  const [analysisId, setAnalysisId] = useState("");
+  const [fileInfo] = useState<PendingFileMeta | null>(() =>
+    typeof window === "undefined" ? null : getFileStoreMeta(),
+  );
+  const [analysisId] = useState(() =>
+    `VS-${Date.now().toString(36).toUpperCase()}-${Math.random()
+      .toString(36)
+      .slice(2, 6)
+      .toUpperCase()}`,
+  );
 
   useEffect(() => {
-    setHasMounted(true);
-    const info = getFileStoreMeta();
-    if (!info) {
+    if (!fileInfo) {
       router.push("/upload");
-    } else {
-      setFileInfo(info);
-      setAnalysisId(`VS-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`);
     }
-  }, [router]);
+  }, [fileInfo, router]);
 
   useEffect(() => {
-    if (!hasMounted || !fileInfo || !analysisId || apiCalledRef.current) return;
+    if (!fileInfo || !analysisId || apiCalledRef.current) return;
     apiCalledRef.current = true;
 
     const steps = getPipelineSteps(fileInfo.mediaType);
@@ -167,9 +149,9 @@ export default function ProcessingPage() {
     }
 
     runAnalysis();
-  }, [hasMounted, analysisId, fileInfo, router]);
+  }, [analysisId, fileInfo, router]);
 
-  if (!hasMounted || !fileInfo) {
+  if (!fileInfo) {
     return null;
   }
 
@@ -179,19 +161,19 @@ export default function ProcessingPage() {
   return (
     <>
       <Navbar />
-      <div className="page-content" style={{ height: "calc(100vh - var(--header-h))", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <main className="page-container" style={{ flex: 1, padding: "20px 0 28px", display: "flex", flexDirection: "column", gap: 16, justifyContent: "center", minHeight: 0 }}>
+      <div className="page-content viewport-page">
+        <main className="page-container viewport-container stack-sm">
 
-          <header className="page-intro fade-in" style={{ marginBottom: 0 }}>
-            <span className="eyebrow" style={{ fontSize: "0.68rem" }}>Processing pipeline</span>
-            <h1 className="page-title" style={{ fontSize: "1.75rem", marginTop: 4, lineHeight: 1.2 }}>
-              Inspecting {fileInfo ? `your ${mediaLabel}` : "the file"}.
+          <header className="page-intro fade-in" style={{ marginBottom: 0, flexShrink: 0 }}>
+            <span className="eyebrow" style={{ fontSize: "0.68rem" }}>Forensic pipeline</span>
+            <h1 className="page-title" style={{ fontSize: "1.45rem", marginTop: 4, lineHeight: 1.2 }}>
+              Processing {fileInfo ? `${mediaLabel} evidence` : "evidence"}.
             </h1>
           </header>
 
-          <section className="workspace-grid" style={{ minHeight: 0, flex: 1, display: "grid", gridTemplateColumns: "1.25fr 0.75fr", gap: 20, alignItems: "stretch" }}>
+          <section className="workspace-grid viewport-grid">
             {/* Pipeline */}
-            <div className="surface" style={{ padding: 20, display: "flex", flexDirection: "column", minHeight: 0, overflow: "hidden" }}>
+            <div className="surface compact-surface" style={{ padding: 18, display: "flex", flexDirection: "column" }}>
               <div
                 style={{
                   display: "flex",
@@ -202,7 +184,7 @@ export default function ProcessingPage() {
                   flexShrink: 0
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: "0.9rem" }}>Pipeline</div>
+                <div style={{ fontWeight: 700, fontSize: "0.9rem" }}>Active stages</div>
                 <span className="pill pill-accent" style={{ minHeight: 22, fontSize: "0.72rem", paddingInline: 8 }}>{progress}%</span>
               </div>
 
@@ -214,7 +196,7 @@ export default function ProcessingPage() {
                     <div
                       key={step.id}
                       className={`stage-row${isDone ? " is-done" : isCurrent ? " is-current" : ""}`}
-                      style={{ padding: "10px 0" }}
+                      style={{ padding: "8px 0" }}
                     >
                       <span className="stage-status" style={{ width: 24, height: 24 }}>
                         {isDone ? <CheckCircle2 size={12} color="var(--green)" /> :
@@ -222,11 +204,11 @@ export default function ProcessingPage() {
                             <Clock3 size={12} color="var(--text-3)" />}
                       </span>
                       <div>
-                        <div style={{ fontWeight: 500, fontSize: "0.85rem" }}>{step.label}</div>
-                        <div className="note mono" style={{ fontSize: "0.72rem", marginTop: 1 }}>{step.model}</div>
+                        <div style={{ fontWeight: 650, fontSize: "0.84rem" }}>{step.label}</div>
+                        <div className="note mono" style={{ fontSize: "0.68rem", marginTop: 1, overflowWrap: "anywhere" }}>{step.model}</div>
                       </div>
                       <div className="mono" style={{ color: "var(--text-3)", fontSize: "0.72rem" }}>
-                        {isDone ? "done" : isCurrent ? "running" : "—"}
+                        {isDone ? "done" : isCurrent ? "running" : "-"}
                       </div>
                     </div>
                   );
@@ -236,46 +218,30 @@ export default function ProcessingPage() {
 
             {/* Sidebar */}
             <aside className="surface-stack" style={{ display: "flex", flexDirection: "column", gap: 16, minHeight: 0 }}>
-              <div className="surface" style={{ padding: 18, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", minHeight: 0 }}>
-                <div style={{ textAlign: "center" }} className="stack-sm">
-                  <div className="dial" style={{ width: 140, height: 140 }}>
-                    <CircularProgress pct={progress} />
-                    <div
-                      style={{
-                        position: "absolute",
-                        inset: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <div
-                        className="mono"
-                        style={{ fontSize: "1.75rem", fontWeight: 600, letterSpacing: "-0.04em", lineHeight: 1 }}
-                      >
-                        {progress}%
-                      </div>
-                      <div className="note" style={{ fontSize: "0.7rem", marginTop: 2 }}>complete</div>
-                    </div>
-                  </div>
-
-                  <div style={{ marginTop: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: "0.85rem" }}>
+              <div className="surface compact-surface" style={{ padding: 20, flex: 1, display: "flex", alignItems: "center" }}>
+                <div className="processing-progress">
+                  <div>
+                    <div className="label">Progress</div>
+                    <div className="processing-progress__value">{progress}%</div>
+                    <div className="note" style={{ marginTop: 6 }}>
                       {pipelineSteps[Math.min(currentStep, pipelineSteps.length - 1)]?.label || "Preparing"}
                     </div>
-                    <p className="note" style={{ margin: "2px 0 0", fontSize: "0.8rem" }}>
-                      {completedSteps.size} / {pipelineSteps.length} stages
-                    </p>
+                  </div>
+                  <div className="processing-progress__bar" aria-label={`${progress}% complete`}>
+                    <div className="processing-progress__fill" style={{ width: `${progress}%` }} />
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span className="pill pill-accent">{completedSteps.size} / {pipelineSteps.length}</span>
+                    <span className="pill">Stages</span>
                   </div>
                 </div>
               </div>
 
-              <div className="surface" style={{ padding: 16, flexShrink: 0 }}>
+              <div className="surface" style={{ padding: 14, flexShrink: 0 }}>
                 <div className="data-list">
                   <div className="data-row" style={{ padding: "6px 0" }}>
                     <span className="label" style={{ fontSize: "0.8rem" }}>File</span>
-                    <span className="value" style={{ fontSize: "0.8rem", fontWeight: 500 }}>{fileInfo?.name || "—"}</span>
+                    <span className="value" style={{ fontSize: "0.78rem", fontWeight: 600, overflowWrap: "anywhere" }}>{fileInfo?.name || "-"}</span>
                   </div>
                   <div className="data-row" style={{ padding: "6px 0" }}>
                     <span className="label" style={{ fontSize: "0.8rem" }}>Mode</span>
@@ -283,7 +249,7 @@ export default function ProcessingPage() {
                   </div>
                   <div className="data-row" style={{ padding: "6px 0" }}>
                     <span className="label" style={{ fontSize: "0.8rem" }}>ID</span>
-                    <span className="value mono" style={{ fontSize: "0.72rem", fontWeight: 500 }}>{analysisId}</span>
+                    <span className="value mono" style={{ fontSize: "0.68rem", fontWeight: 600, overflowWrap: "anywhere" }}>{analysisId}</span>
                   </div>
                 </div>
               </div>
@@ -293,7 +259,7 @@ export default function ProcessingPage() {
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
-                  padding: "12px 14px",
+                  padding: "10px 12px",
                   border: "1px solid var(--line)",
                   borderRadius: "var(--r-md)",
                   background: "var(--bg-2)",
@@ -302,7 +268,7 @@ export default function ProcessingPage() {
               >
                 <ShieldCheck size={14} color="var(--text-3)" style={{ flexShrink: 0 }} />
                 <p className="note" style={{ margin: 0, fontSize: "0.8rem" }}>
-                  Media is cleared after submission.
+                  Case media is cleared when the session ends.
                 </p>
               </div>
             </aside>

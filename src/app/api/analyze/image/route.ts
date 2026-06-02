@@ -19,6 +19,112 @@ Respond ONLY with valid JSON. Do not include markdown or text outside the JSON:
   "details": "A detailed technical explanation of your visual forensic findings."
 }`;
 
+type ImageReport = {
+  verdict_sentence: string;
+  plain_language_explanation: string;
+  recommended_action: string;
+  suggested_scenario: string;
+  visual_artifacts: string[];
+};
+
+function fallbackReport(
+  verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN',
+  fakeScore: number,
+  modelsRan: number,
+): ImageReport {
+  if (verdict === 'FAKE') {
+    return {
+      verdict_sentence: 'This image appears AI-generated.',
+      plain_language_explanation: `${modelsRan} detection system${modelsRan > 1 ? 's' : ''} flagged this image as AI-generated with ${Math.round(fakeScore)}% probability.`,
+      recommended_action: 'Do not use this image as evidence until it is verified with the original source.',
+      suggested_scenario: 'Potential AI-generated or manipulated image.',
+      visual_artifacts: [],
+    };
+  }
+  if (verdict === 'SUSPICIOUS') {
+    return {
+      verdict_sentence: 'This image has suspicious forensic signals.',
+      plain_language_explanation: 'The detection signals were mixed, so the image should be treated as unverified.',
+      recommended_action: 'Verify this image with reverse image search and trusted source material before acting on it.',
+      suggested_scenario: 'Possible AI-generated or edited image.',
+      visual_artifacts: [],
+    };
+  }
+  return {
+    verdict_sentence: 'This image appears authentic.',
+    plain_language_explanation: `${modelsRan} detection system${modelsRan > 1 ? 's' : ''} found no strong signs of AI generation.`,
+    recommended_action: 'The image appears low risk, but important content should still be checked against trusted sources.',
+    suggested_scenario: 'Likely authentic image.',
+    visual_artifacts: [],
+  };
+}
+
+async function generateGeminiImageReport({
+  bytes,
+  mimeType,
+  verdict,
+  fakeScore,
+  realScore,
+  modelsRan,
+  modelResults,
+}: {
+  bytes: ArrayBuffer;
+  mimeType: string;
+  verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN';
+  fakeScore: number;
+  realScore: number;
+  modelsRan: number;
+  modelResults: {
+    model: string;
+    modelId: string;
+    verdict: 'FAKE' | 'REAL' | null;
+    confidence: number;
+    rawLabel: string;
+    ran: boolean;
+  }[];
+}): Promise<ImageReport> {
+  const prompt = `Write the user-facing forensic report for this image.
+
+Use these model results as the primary evidence:
+- Final verdict: ${verdict}
+- AI probability: ${Math.round(fakeScore)}%
+- Authentic probability: ${Math.round(realScore)}%
+- Models ran: ${modelsRan}
+- Model breakdown: ${JSON.stringify(modelResults)}
+
+Return ONLY valid JSON:
+{
+  "verdict_sentence": "one short sentence",
+  "plain_language_explanation": "2-3 concise sentences explaining the evidence",
+  "recommended_action": "one practical action sentence",
+  "suggested_scenario": "one concise scenario sentence",
+  "visual_artifacts": ["short artifact phrase", "short artifact phrase"]
+}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{
+        parts: [
+          { inlineData: { mimeType, data: Buffer.from(bytes).toString('base64') } },
+          { text: prompt },
+        ],
+      }],
+    });
+
+    const text = (response.text ?? '').trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(text) as Partial<ImageReport>;
+    return {
+      ...fallbackReport(verdict, fakeScore, modelsRan),
+      ...parsed,
+      visual_artifacts: Array.isArray(parsed.visual_artifacts) ? parsed.visual_artifacts : [],
+    };
+  } catch (e) {
+    console.error('[Image][GeminiReport] failed:', e);
+    return fallbackReport(verdict, fakeScore, modelsRan);
+  }
+}
+
 // ─── Models ────────────────────────────────────────────────────────────────────
 // All three are confirmed on HuggingFace Inference API (serverless, free tier).
 // Raw bytes are posted directly — no SDK needed for image inference.
@@ -36,7 +142,7 @@ const MODELS = [
     weight: 1.0,
   },
   {
-    id:     'haywoodsloan/ai-image-detector-deploy',
+    id:     'haywoodsloan/ai-image-detector-dev-deploy',
     name:   'AI Image Detector',
     weight: 1.0,
   },
@@ -168,7 +274,7 @@ export async function POST(req: NextRequest) {
       const fallbackResults = MODELS.map(m => ({
         model: m.name,
         modelId: m.id,
-        verdict: parsed.verdict as any,
+        verdict: parsed.verdict,
         confidence: parsed.confidence,
         rawLabel: `GEMINI_FALLBACK_${parsed.verdict}`,
         ran: true
@@ -188,6 +294,24 @@ export async function POST(req: NextRequest) {
         modelsFailed:   MODELS.length,
         models:         fallbackResults,
         durationMs:     Date.now() - startTime,
+        report: {
+          verdict_sentence:
+            parsed.verdict === 'FAKE'
+              ? 'This image appears AI-generated.'
+              : parsed.verdict === 'SUSPICIOUS'
+                ? 'This image has suspicious forensic signals.'
+                : 'This image appears authentic.',
+          plain_language_explanation: parsed.details,
+          recommended_action:
+            parsed.verdict === 'REAL'
+              ? 'The image appears low risk, but important content should still be checked against trusted sources.'
+              : 'Do not use this image as evidence until it is verified with the original source.',
+          suggested_scenario:
+            parsed.verdict === 'REAL'
+              ? 'Likely authentic image.'
+              : 'Potential AI-generated or manipulated image.',
+          visual_artifacts: parsed.visual_artifacts ?? parsed.reasons ?? [],
+        },
         notes:          `Hugging Face sub-models were offline. Fallback forensic analysis was performed by Gemini. Details: ${parsed.details}`
       });
     } catch (e) {
@@ -266,6 +390,16 @@ export async function POST(req: NextRequest) {
   );
   console.log('══════ [TruthLens/Image] Done ══════\n');
 
+  const report = await generateGeminiImageReport({
+    bytes,
+    mimeType,
+    verdict: finalVerdict,
+    fakeScore,
+    realScore,
+    modelsRan: successfulRuns,
+    modelResults,
+  });
+
   return NextResponse.json({
     verdict:        finalVerdict,
     confidence:     confidence,
@@ -274,6 +408,7 @@ export async function POST(req: NextRequest) {
     modelsRan:      successfulRuns,
     modelsFailed:   MODELS.length - successfulRuns,
     models:         modelResults,
+    report,
     durationMs:     Date.now() - startTime,
   });
 }

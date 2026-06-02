@@ -1,7 +1,12 @@
 "use client";
 
+import Image from "next/image";
 import { Camera, Image as ImageIcon, SearchCheck } from "lucide-react";
-import { AnalysisResult, getRiskColor } from "@/lib/types";
+import { AnalysisResult } from "@/lib/types";
+
+type HeatmapZone = NonNullable<
+  NonNullable<AnalysisResult["face_check"]>["heatmap_zones"]
+>[number];
 
 function ArtifactItem({ text }: { text: string }) {
   return (
@@ -12,85 +17,88 @@ function ArtifactItem({ text }: { text: string }) {
   );
 }
 
-function HeatmapOverlay({ zones, imageUrl, isVideo }: { zones: any[], imageUrl?: string | null, isVideo?: boolean }) {
+function MediaPreview({
+  zones,
+  imageUrl,
+  isVideo,
+}: {
+  zones: HeatmapZone[];
+  imageUrl?: string | null;
+  isVideo?: boolean;
+}) {
   return (
     <div
-      className="surface"
       style={{
-        padding: 24,
         position: "relative",
-        minHeight: 340,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "var(--bg)",
+        minHeight: 300,
+        border: "1px solid var(--line)",
+        borderRadius: "var(--r)",
+        background: "rgba(6,17,29,0.72)",
+        overflow: "hidden",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          inset: 24,
-          borderRadius: 24,
-          border: "1px solid var(--line)",
-          background: "#111c2a",
-          overflow: "hidden",
-        }}
-      >
-        {imageUrl ? (
-          isVideo ? (
-            <video
-              src={imageUrl}
-              style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.6 }}
-              muted
-              autoPlay
-              loop
-              playsInline
-            />
-          ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt="Analysis subject" style={{ width: "100%", height: "100%", objectFit: "contain", opacity: 0.6 }} />
-          )
-        ) : (
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "var(--text-muted)",
-              fontStyle: "italic",
-              background: "var(--surface-muted)",
-              zIndex: 0,
-            }}
-          >
-            Original media unavailable
-          </div>
-        )}
-
-        {zones.map((zone, index) => (
-          <span
-            key={index}
-            style={{
-              position: "absolute",
-              top: zone.top,
-              left: zone.left,
-              right: zone.right,
-              width: zone.size,
-              height: zone.size,
-              borderRadius: 999,
-              background: `rgba(239, 100, 100, ${zone.opacity || 0.6})`,
-              filter: "blur(24px)",
-              pointerEvents: "none",
-            }}
+      {imageUrl ? (
+        isVideo ? (
+          <video
+            src={imageUrl}
+            style={{ width: "100%", height: 300, objectFit: "contain", opacity: 0.72 }}
+            muted
+            autoPlay
+            loop
+            playsInline
           />
-        ))}
-      </div>
+        ) : (
+          <Image
+            src={imageUrl}
+            alt="Analyzed media"
+            width={720}
+            height={300}
+            unoptimized
+            style={{ width: "100%", height: 300, objectFit: "contain", opacity: 0.72 }}
+          />
+        )
+      ) : (
+        <div
+          className="note"
+          style={{
+            height: 300,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          Original media unavailable
+        </div>
+      )}
+
+      {zones.map((zone, index) => (
+        <span
+          key={index}
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            top: zone.top,
+            left: zone.left,
+            right: zone.right,
+            width: zone.size,
+            height: zone.size,
+            borderRadius: 999,
+            border: "2px solid var(--danger)",
+            background: "rgba(255, 92, 92, 0.18)",
+            pointerEvents: "none",
+          }}
+        />
+      ))}
     </div>
   );
 }
 
-export default function ImageTab({ result, imageUrl }: { result: AnalysisResult; imageUrl?: string | null }) {
+export default function ImageTab({
+  result,
+  imageUrl,
+}: {
+  result: AnalysisResult;
+  imageUrl?: string | null;
+}) {
   const isVideo = result.fileType === "video";
   const artifacts = result.visual_artifacts?.length
     ? result.visual_artifacts
@@ -100,86 +108,41 @@ export default function ImageTab({ result, imageUrl }: { result: AnalysisResult;
   return (
     <div className="section-grid-2">
       <div className="stack-md">
-
-        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
+        <div className="surface-muted" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <SearchCheck size={16} color="var(--red)" />
-            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Detected visual artifacts</div>
+            <SearchCheck size={18} color="var(--accent-2)" />
+            <div style={{ fontWeight: 850 }}>Visual artifacts</div>
           </div>
           {hasVisualData ? (
             artifacts.map((artifact) => <ArtifactItem key={artifact} text={artifact} />)
           ) : (
-            <p className="note" style={{ margin: 0, fontSize: "0.86rem" }}>
-              There are no image-specific artifacts to display.
-            </p>
+            <p className="note">No image-specific artifacts were returned.</p>
           )}
         </div>
 
         {result.image_models && (
-          <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
+          <div className="surface-muted" style={{ padding: 22 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-              <ImageIcon size={16} color="var(--red)" />
-              <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Sub-model pipeline details</div>
+              <ImageIcon size={18} color="var(--accent-2)" />
+              <div style={{ fontWeight: 850 }}>Model checks</div>
             </div>
-            <div className="stack-sm">
+            <div className="data-list">
               {result.image_models.map((m) => {
-                const modelVerdictColor =
+                const color =
                   m.verdict === "FAKE"
                     ? "var(--danger)"
                     : m.verdict === "REAL"
                       ? "var(--success)"
-                      : "var(--text-soft)";
+                      : "var(--text-2)";
                 return (
-                  <div
-                    key={m.modelId}
-                    style={{
-                      padding: 14,
-                      background: "var(--bg-2)",
-                      border: "1px solid var(--line)",
-                      borderRadius: "var(--r)",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", gap: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{m.model}</div>
-                        <div className="mono" style={{ fontSize: "0.72rem", color: "var(--text-dim)", marginTop: 2 }}>
-                          {m.modelId}
-                        </div>
-                      </div>
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: "0.7rem",
-                          fontWeight: 600,
-                          padding: "2px 8px",
-                          borderRadius: 4,
-                          background: m.ran ? (m.verdict === "FAKE" ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)") : "rgba(148,163,184,0.1)",
-                          color: modelVerdictColor,
-                        }}
-                      >
-                        {m.ran ? (m.verdict === "FAKE" ? "AI Generated" : "Authentic") : "OFFLINE"}
-                      </span>
-                    </div>
-
-                    {m.ran && (
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          fontSize: "0.82rem",
-                          marginTop: 4,
-                        }}
-                      >
-                        <span style={{ color: "var(--text-soft)" }}>Confidence score:</span>
-                        <span className="mono" style={{ fontWeight: 600, color: modelVerdictColor }}>
-                          {m.confidence}%
-                        </span>
-                      </div>
-                    )}
+                  <div key={m.modelId} className="data-row">
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ display: "block", fontWeight: 750 }}>{m.model}</span>
+                      <span className="mono label">{m.modelId}</span>
+                    </span>
+                    <span className="value" style={{ color }}>
+                      {m.ran ? `${m.confidence}% ${m.verdict ?? "UNKNOWN"}` : "Offline"}
+                    </span>
                   </div>
                 );
               })}
@@ -189,27 +152,33 @@ export default function ImageTab({ result, imageUrl }: { result: AnalysisResult;
       </div>
 
       <div className="stack-md">
-        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
+        <div className="surface-muted" style={{ padding: 22 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-            <Camera size={16} color="var(--red)" />
-            <div style={{ fontWeight: 600, fontSize: "0.95rem" }}>Heatmap view</div>
+            <Camera size={18} color="var(--accent-2)" />
+            <div style={{ fontWeight: 850 }}>Media review</div>
           </div>
-          <HeatmapOverlay zones={result.face_check?.heatmap_zones || []} imageUrl={imageUrl} />
-          <p className="note" style={{ margin: "14px 0 0", fontSize: "0.86rem" }}>
-            Highlighted areas mark likely manipulation zones.
+          <MediaPreview
+            zones={result.face_check?.heatmap_zones || []}
+            imageUrl={imageUrl}
+            isVideo={isVideo}
+          />
+          <p className="note" style={{ marginTop: 12 }}>
+            Marked areas indicate regions the analysis flagged for closer review.
           </p>
         </div>
 
-        <div className="surface" style={{ padding: 24, background: "var(--bg)" }}>
-          <div style={{ fontWeight: 600, fontSize: "0.95rem", marginBottom: 16 }}>Open-source face check</div>
+        <div className="surface-muted" style={{ padding: 22 }}>
+          <div style={{ fontWeight: 850, marginBottom: 14 }}>Face/source check</div>
           <div className="summary-grid">
-            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
-              <div className="label" style={{ fontSize: "0.8rem" }}>Public match</div>
-              <div style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem" }}>{result.face_check?.match || "No strong match"}</div>
+            <div className="summary-cell">
+              <div className="label">Public match</div>
+              <div style={{ marginTop: 8, fontWeight: 850 }}>
+                {result.face_check?.match || "No strong match"}
+              </div>
             </div>
-            <div className="summary-cell" style={{ background: "var(--bg-2)" }}>
-              <div className="label" style={{ fontSize: "0.8rem" }}>Interpretation</div>
-              <div style={{ marginTop: 8, fontWeight: 600, fontSize: "0.88rem" }}>
+            <div className="summary-cell">
+              <div className="label">Interpretation</div>
+              <div style={{ marginTop: 8, fontWeight: 850 }}>
                 {result.face_check?.interpretation || "Verify with source"}
               </div>
             </div>

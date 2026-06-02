@@ -3,11 +3,11 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, History, Menu, X } from "lucide-react";
+import { Home, History, Menu, X } from "lucide-react";
 import BrandMark from "@/components/BrandMark";
 
 const navLinks = [
-  { href: "/upload", label: "Analyze", icon: BarChart3 },
+  { href: "/", label: "Home", icon: Home },
   { href: "/history", label: "History", icon: History },
 ];
 
@@ -40,7 +40,7 @@ export default function Navbar() {
 
         <div className="header-actions desktop-only">
           <Link href="/upload" className="button button-primary button-small">
-            New Analysis
+            Start Analysis
           </Link>
         </div>
 
@@ -79,7 +79,7 @@ export default function Navbar() {
               className="button button-primary button-wide"
               onClick={() => setMobileOpen(false)}
             >
-              Start New Analysis
+              Start Analysis
             </Link>
           </div>
         </div>

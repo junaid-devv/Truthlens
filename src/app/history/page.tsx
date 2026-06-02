@@ -28,8 +28,8 @@ function formatDate(ts: number) {
 
 function TypeBadge({ type }: { type: string }) {
   const color =
-    type === "audio" ? "var(--red)" :
-      type === "image" ? "#60c7ff" : "#8b9fff";
+    type === "audio" ? "var(--danger)" :
+      type === "image" ? "var(--accent)" : "var(--success)";
   return (
     <span
       className="mono"
@@ -75,8 +75,8 @@ export default function HistoryPage() {
             style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 20, flexWrap: "wrap" }}
           >
             <div className="page-intro">
-              <span className="eyebrow">History</span>
-              <h1 className="page-title">Past analyses.</h1>
+              <span className="eyebrow">Case archive</span>
+              <h1 className="page-title">Previous forensic reviews.</h1>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {history.length > 0 && (
@@ -89,7 +89,7 @@ export default function HistoryPage() {
                   Clear All
                 </button>
               )}
-              <Link href="/upload" className="button button-primary">New Analysis</Link>
+              <Link href="/upload" className="button button-primary">Start Analysis</Link>
             </div>
           </header>
 
@@ -153,7 +153,7 @@ export default function HistoryPage() {
               </div>
               <div style={{ fontWeight: 600, fontSize: "1.05rem" }}>No analyses yet</div>
               <p className="note" style={{ margin: "8px auto 0", maxWidth: 360, fontSize: "0.86rem" }}>
-                Run an analysis — it will appear here.
+                Open a case and the completed review will appear here.
               </p>
             </section>
           ) : (
@@ -192,9 +192,9 @@ export default function HistoryPage() {
                       {/* File info */}
                       <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
                         <span className="brand-mark__badge compact" style={{ width: 30, height: 30, border: "1px solid var(--line)", background: "var(--bg-2)" }}>
-                          {entry.fileType === "audio" && <Mic size={13} color="var(--red)" />}
-                          {entry.fileType === "image" && <ImageIcon size={13} color="#60c7ff" />}
-                          {entry.fileType === "video" && <Video size={13} color="#8b9fff" />}
+                          {entry.fileType === "audio" && <Mic size={13} color="var(--danger)" />}
+                          {entry.fileType === "image" && <ImageIcon size={13} color="var(--accent)" />}
+                          {entry.fileType === "video" && <Video size={13} color="var(--success)" />}
                         </span>
                         <div style={{ minWidth: 0 }}>
                           <div

@@ -25,8 +25,8 @@ export default function AppLogo({
       {title ? <title>{title}</title> : null}
       <path
         d="M8 34C12 23 22 16 33 16C43 16 52 21 57 30"
-        stroke="#8FB0E8"
-        strokeOpacity="0.95"
+        stroke="currentColor"
+        strokeOpacity="0.7"
         strokeWidth="4"
         strokeLinecap="round"
       />
@@ -34,26 +34,26 @@ export default function AppLogo({
         cx="34"
         cy="34"
         r="15"
-        stroke="#FF5A5F"
+        stroke="currentColor"
         strokeWidth="4.6"
       />
       <path
         d="M27 34L32 39L41 29"
-        stroke="#EFF6FF"
+        stroke="currentColor"
         strokeWidth="4"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
         d="M45 45L55 55"
-        stroke="#FF5A5F"
+        stroke="currentColor"
         strokeWidth="4.6"
         strokeLinecap="round"
       />
       <path
         d="M12 46L21 37"
-        stroke="#8FB0E8"
-        strokeOpacity="0.9"
+        stroke="currentColor"
+        strokeOpacity="0.7"
         strokeWidth="3.4"
         strokeLinecap="round"
       />
