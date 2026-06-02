@@ -23,12 +23,12 @@ const stepTimings = [800, 2400, 2700, 1300, 600, 300, 3200, 2000];
 function getPipelineSteps(mediaType: string) {
   if (mediaType === "image") {
     return [
-      { id: "intake",   label: "Privacy filter",           model: "Client-side intake" },
-      { id: "siglip",  label: "SigLIP2 deepfake scan",     model: "prithivMLmods/deepfake-detector-v1" },
-      { id: "sdxl",    label: "SDXL generation detector",  model: "Organika/sdxl-detector" },
-      { id: "aiimg",   label: "AI image fingerprinting",   model: "haywoodsloan/ai-image-detector-dev-deploy" },
-      { id: "verdict", label: "Weighted verdict",          model: "Aggregator" },
-      { id: "cert",    label: "Certificate preparation",   model: "Report engine" },
+      { id: "intake",   label: "Privacy filter",              model: "Client-side intake" },
+      { id: "health",   label: "Colab health check",           model: "ngrok endpoint" },
+      { id: "aiimg",    label: "AI image generation scan",     model: "xRayon/convnext-ai-images-detector" },
+      { id: "forgery",  label: "Face forgery detection",       model: "yermandy/deepfake-detection" },
+      { id: "report",   label: "Forensic report synthesis",    model: "gemini-2.5-flash" },
+      { id: "cert",     label: "Certificate preparation",      model: "Report engine" },
     ];
   }
   if (mediaType === "audio") {
@@ -131,7 +131,7 @@ export default function ProcessingPage() {
 
         if (result.error) {
           sessionStorage.setItem("analysisResult", JSON.stringify(result));
-          setTimeout(() => router.push("/upload"), 500);
+          setTimeout(() => router.push("/results"), 500);
           return;
         }
 
@@ -144,7 +144,7 @@ export default function ProcessingPage() {
           "analysisResult",
           JSON.stringify({ error: "An unexpected error occurred during analysis.", analysisId, fileName: fileInfo?.name, fileType: fileInfo?.mediaType }),
         );
-        setTimeout(() => router.push("/upload"), 1500);
+        setTimeout(() => router.push("/results"), 500);
       }
     }
 

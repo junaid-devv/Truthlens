@@ -1,23 +1,23 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
+import { NextRequest, NextResponse } from 'next/server';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const COLAB_IMAGE_URL = (
+  process.env.COLAB_IMAGE_URL ||
+  process.env.COLAB_AUDIO_URL ||
+  ''
+).replace(/\/$/, '');
 
-const GEMINI_IMAGE_PROMPT = `You are an expert forensic image analyst. Analyze the provided image for signs of AI generation or deepfake manipulation (e.g. SDXL, Midjourney, GANs, face swapping).
-Look closely for:
-1. Localized facial anomalies (blending, mismatched eyes, ear/jaw asymmetry, blurred boundaries).
-2. Fine texture details (plastic skin, unnaturally smooth gradients, hair-strand inconsistencies).
-3. Structural/anatomical contradictions (extra fingers, distorted backgrounds, floating objects).
-4. Lighting and shadow anomalies.
+type Verdict = 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN';
 
-Respond ONLY with valid JSON. Do not include markdown or text outside the JSON:
-{
-  "verdict": "FAKE" | "REAL" | "SUSPICIOUS",
-  "confidence": <integer 0-100>,
-  "reasons": ["reason1", "reason2"],
-  "visual_artifacts": ["artifact1", "artifact2"],
-  "details": "A detailed technical explanation of your visual forensic findings."
-}`;
+type ModelResult = {
+  model: string;
+  modelId: string;
+  verdict: Verdict | null;
+  confidence: number;
+  rawLabel: string;
+  ran: boolean;
+};
 
 type ImageReport = {
   verdict_sentence: string;
@@ -25,37 +25,111 @@ type ImageReport = {
   recommended_action: string;
   suggested_scenario: string;
   visual_artifacts: string[];
+  source_match?: string;
+  source_interpretation?: string;
+  source?: 'gemini' | 'fallback';
 };
 
+type ColabImageResponse = {
+  verdict?: Verdict | 'ERROR';
+  confidence?: number;
+  fake_probability?: number;
+  real_probability?: number;
+  ai_verdict?: Verdict | 'ERROR';
+  ai_fake_probability?: number;
+  ai_real_probability?: number;
+  face_verdict?: Verdict | 'ERROR';
+  face_fake_probability?: number;
+  face_real_probability?: number;
+  face_found?: boolean;
+  face_box?: [number, number, number, number] | null;
+  model?: string;
+  model_id?: string;
+  raw?: { label: string; score: number }[];
+  error?: string;
+};
+
+const AI_MODEL_NAME = 'ConvNeXt AI Image Detector';
+const AI_MODEL_ID = 'xRayon/convnext-ai-images-detector';
+const FACE_MODEL_NAME = 'Yermandy Face Forgery Detector';
+const FACE_MODEL_ID = 'yermandy/deepfake-detection';
+
 function fallbackReport(
-  verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN',
+  verdict: Verdict,
   fakeScore: number,
-  modelsRan: number,
+  faceFound: boolean,
 ): ImageReport {
+  if (!faceFound) {
+    return {
+      verdict_sentence:
+        verdict === 'FAKE'
+          ? 'This image shows signs of AI generation.'
+          : verdict === 'SUSPICIOUS'
+            ? 'This image has suspicious AI-generation signals.'
+            : 'No strong AI-generation signal was detected.',
+      plain_language_explanation:
+        verdict === 'FAKE'
+          ? `The full-image detector estimated a ${Math.round(fakeScore)}% AI-generation probability. No face was detected, so face-swap analysis was skipped.`
+          : 'The full-image detector completed analysis. No face was detected, so face-swap analysis was skipped.',
+      recommended_action:
+        verdict === 'FAKE' || verdict === 'SUSPICIOUS'
+          ? 'Verify the image with the original source before sharing or using it as evidence.'
+          : 'The image is low risk from the available detector, but important content should still be source-checked.',
+      suggested_scenario:
+        verdict === 'FAKE'
+          ? 'Possible AI-generated image.'
+          : 'Face-forgery analysis was not applicable.',
+      visual_artifacts: verdict === 'FAKE' ? ['Full-image AI-generation detector flagged the image'] : [],
+      source_match: 'Identity not verified',
+      source_interpretation:
+        'This app does not perform biometric public-figure identification. Verify any claimed identity through trusted source material.',
+      source: 'fallback',
+    };
+  }
+
   if (verdict === 'FAKE') {
     return {
-      verdict_sentence: 'This image appears AI-generated.',
-      plain_language_explanation: `${modelsRan} detection system${modelsRan > 1 ? 's' : ''} flagged this image as AI-generated with ${Math.round(fakeScore)}% probability.`,
-      recommended_action: 'Do not use this image as evidence until it is verified with the original source.',
-      suggested_scenario: 'Potential AI-generated or manipulated image.',
-      visual_artifacts: [],
+      verdict_sentence: 'This image shows signs of AI generation or face manipulation.',
+      plain_language_explanation: `The strongest image detector estimated a ${Math.round(fakeScore)}% manipulation or AI-generation probability.`,
+      recommended_action:
+        'Do not trust this image as identity evidence until it is verified against the original source.',
+      suggested_scenario: 'Possible face swap or facial deepfake.',
+      visual_artifacts: ['Face-forgery model flagged the detected face'],
+      source_match: 'Identity not verified',
+      source_interpretation:
+        'The face region was suspicious. Treat any claimed public-figure identity as unverified unless confirmed by an official source.',
+      source: 'fallback',
     };
   }
+
   if (verdict === 'SUSPICIOUS') {
     return {
-      verdict_sentence: 'This image has suspicious forensic signals.',
-      plain_language_explanation: 'The detection signals were mixed, so the image should be treated as unverified.',
-      recommended_action: 'Verify this image with reverse image search and trusted source material before acting on it.',
-      suggested_scenario: 'Possible AI-generated or edited image.',
-      visual_artifacts: [],
+      verdict_sentence: 'The face-forgery result is suspicious but not conclusive.',
+      plain_language_explanation:
+        'The detector found mixed evidence, so this image should be treated as unverified rather than clearly fake.',
+      recommended_action:
+        'Verify with the original source, reverse image search, and additional forensic checks.',
+      suggested_scenario: 'Possible facial manipulation or degraded image quality.',
+      visual_artifacts: ['Borderline face-forgery score'],
+      source_match: 'Identity not verified',
+      source_interpretation:
+        'The analysis cannot confirm who the person is. Verify the claimed identity with original source media.',
+      source: 'fallback',
     };
   }
+
   return {
-    verdict_sentence: 'This image appears authentic.',
-    plain_language_explanation: `${modelsRan} detection system${modelsRan > 1 ? 's' : ''} found no strong signs of AI generation.`,
-    recommended_action: 'The image appears low risk, but important content should still be checked against trusted sources.',
-    suggested_scenario: 'Likely authentic image.',
+    verdict_sentence: 'No strong face-forgery signal was detected.',
+    plain_language_explanation:
+      'The face detector found a face, and the forgery model did not find strong manipulation evidence.',
+    recommended_action:
+      'The face analysis is low risk, but important images should still be verified through trusted sources.',
+    suggested_scenario: 'Likely authentic face region.',
     visual_artifacts: [],
+    source_match: 'Identity not verified',
+    source_interpretation:
+      'No identity database or biometric public-figure matching is connected to this app.',
+    source: 'fallback',
   };
 }
 
@@ -65,40 +139,37 @@ async function generateGeminiImageReport({
   verdict,
   fakeScore,
   realScore,
-  modelsRan,
+  faceFound,
   modelResults,
 }: {
   bytes: ArrayBuffer;
   mimeType: string;
-  verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS' | 'UNCERTAIN';
+  verdict: Verdict;
   fakeScore: number;
   realScore: number;
-  modelsRan: number;
-  modelResults: {
-    model: string;
-    modelId: string;
-    verdict: 'FAKE' | 'REAL' | null;
-    confidence: number;
-    rawLabel: string;
-    ran: boolean;
-  }[];
+  faceFound: boolean;
+  modelResults: ModelResult[];
 }): Promise<ImageReport> {
   const prompt = `Write the user-facing forensic report for this image.
 
-Use these model results as the primary evidence:
+Use the detector output as the primary evidence. Do not overclaim. The full-image detector checks AI-generated images; the face detector checks face forgery/deepfake manipulation when a face is present.
+Do not identify or name a person in the image. You may assess whether the image presents an impersonation/source-verification risk.
+
 - Final verdict: ${verdict}
-- AI probability: ${Math.round(fakeScore)}%
-- Authentic probability: ${Math.round(realScore)}%
-- Models ran: ${modelsRan}
+- Face detected: ${faceFound ? 'yes' : 'no'}
+- Combined AI/manipulation probability: ${Math.round(fakeScore)}%
+- Combined authentic probability: ${Math.round(realScore)}%
 - Model breakdown: ${JSON.stringify(modelResults)}
 
 Return ONLY valid JSON:
 {
   "verdict_sentence": "one short sentence",
-  "plain_language_explanation": "2-3 concise sentences explaining the evidence",
+  "plain_language_explanation": "2 concise sentences explaining the evidence",
   "recommended_action": "one practical action sentence",
   "suggested_scenario": "one concise scenario sentence",
-  "visual_artifacts": ["short artifact phrase", "short artifact phrase"]
+  "visual_artifacts": ["short artifact phrase", "short artifact phrase"],
+  "source_match": "Identity not verified | Public-figure impersonation risk | No public figure claim verified",
+  "source_interpretation": "one sentence explaining source/identity verification risk without naming a person"
 }`;
 
   try {
@@ -112,303 +183,178 @@ Return ONLY valid JSON:
       }],
     });
 
-    const text = (response.text ?? '').trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
+    const text = (response.text ?? '')
+      .trim()
+      .replace(/^```json\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
     const parsed = JSON.parse(text) as Partial<ImageReport>;
+
     return {
-      ...fallbackReport(verdict, fakeScore, modelsRan),
+      ...fallbackReport(verdict, fakeScore, faceFound),
       ...parsed,
-      visual_artifacts: Array.isArray(parsed.visual_artifacts) ? parsed.visual_artifacts : [],
+      visual_artifacts: Array.isArray(parsed.visual_artifacts)
+        ? parsed.visual_artifacts
+        : fallbackReport(verdict, fakeScore, faceFound).visual_artifacts,
+      source: 'gemini',
     };
-  } catch (e) {
-    console.error('[Image][GeminiReport] failed:', e);
-    return fallbackReport(verdict, fakeScore, modelsRan);
+  } catch (error) {
+    console.error('[Image][GeminiReport] failed:', error);
+    return fallbackReport(verdict, fakeScore, faceFound);
   }
 }
 
-// ─── Models ────────────────────────────────────────────────────────────────────
-// All three are confirmed on HuggingFace Inference API (serverless, free tier).
-// Raw bytes are posted directly — no SDK needed for image inference.
-const HF_TOKEN = process.env.HF_TOKEN!;
+function normalizeColabVerdict(
+  verdict: ColabImageResponse['verdict'],
+  fakeProbability: number,
+): Verdict {
+  if (verdict === 'FAKE' || verdict === 'REAL' || verdict === 'SUSPICIOUS') return verdict;
+  if (fakeProbability >= 70) return 'FAKE';
+  if (fakeProbability <= 30) return 'REAL';
+  return 'SUSPICIOUS';
+}
 
-const MODELS = [
-  {
-    id:     'prithivMLmods/deepfake-detector-model-v1',
-    name:   'SigLIP2 Deepfake Detector',
-    weight: 1.3,   // highest weight — SigLIP2 backbone, best resolution
-  },
-  {
-    id:     'Organika/sdxl-detector',
-    name:   'SDXL Detector',
-    weight: 1.0,
-  },
-  {
-    id:     'haywoodsloan/ai-image-detector-dev-deploy',
-    name:   'AI Image Detector',
-    weight: 1.0,
-  },
-] as const;
-
-// ─── Structured logger ─────────────────────────────────────────────────────────
-function logRun(model: string)                    { console.log (`[Image][RUN ▶] ${model}`); }
-function logOk (model: string, detail: string)   { console.log (`[Image][OK  ✅] ${model} → ${detail}`); }
-function logFail(model: string, err: unknown)    { console.error(`[Image][FAIL ❌] ${model} → ${String(err).slice(0, 200)}`); }
-
-// ─── HF Inference call ────────────────────────────────────────────────────────
-async function queryModel(
-  modelId: string,
-  imageBytes: ArrayBuffer,
-  mimeType: string,
-): Promise<{ label: string; score: number }[] | null> {
-  logRun(modelId);
-  try {
-    const res = await fetch(
-      `https://router.huggingface.co/hf-inference/models/${modelId}`,
-      {
-        method:  'POST',
-        headers: { 
-          Authorization: `Bearer ${HF_TOKEN}`,
-          'Content-Type': mimeType,
-        },
-        body:    Buffer.from(imageBytes),
-        signal:  AbortSignal.timeout(20_000),
-      },
-    );
-    if (!res.ok) {
-      logFail(modelId, `HTTP ${res.status} ${await res.text().then(t => t.slice(0, 120))}`);
-      return null;
-    }
-    const data = await res.json() as { label: string; score: number }[];
-    logOk(modelId, JSON.stringify(data).slice(0, 120));
-    return data;
-  } catch (e) {
-    logFail(modelId, e);
-    return null;
+async function queryColabImage(file: File): Promise<ColabImageResponse> {
+  if (!COLAB_IMAGE_URL) {
+    throw new Error('COLAB_IMAGE_URL or COLAB_AUDIO_URL is not configured.');
   }
+
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+
+  const health = await fetch(`${COLAB_IMAGE_URL}/health`, {
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!health.ok) {
+    throw new Error(`Colab health check failed with HTTP ${health.status}.`);
+  }
+
+  const response = await fetch(`${COLAB_IMAGE_URL}/analyze/image`, {
+    method: 'POST',
+    body: formData,
+    signal: AbortSignal.timeout(60_000),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Colab image analysis failed with HTTP ${response.status}: ${(await response.text()).slice(0, 200)}`);
+  }
+
+  return response.json() as Promise<ColabImageResponse>;
 }
 
-// ─── Label normaliser ─────────────────────────────────────────────────────────
-// Different models use different label strings — map them all to FAKE | REAL | null
-function normalizeLabel(label: string): 'FAKE' | 'REAL' | null {
-  const l = label.toUpperCase();
-  if (['FAKE', 'ARTIFICIAL', 'AI_GENERATED', 'AI-GENERATED',
-       'MIDJOURNEY', 'SD', 'SDXL', 'DEEPFAKE', 'GENERATED'].some(x => l.includes(x)))
-    return 'FAKE';
-  if (['REAL', 'HUMAN', 'GENUINE', 'AUTHENTIC'].some(x => l.includes(x)))
-    return 'REAL';
-  return null;
-}
-
-// ─── Handler ──────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const startTime = Date.now();
-  console.log('\n══════ [TruthLens/Image] Analysis Started ══════');
+  const startedAt = Date.now();
 
   const formData = await req.formData();
   const file = formData.get('file') as File | null;
-  if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  if (!file) {
+    return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+  }
 
   const mimeType = file.type || 'image/png';
   const bytes = await file.arrayBuffer();
+  const forwardedFile = new File([bytes], file.name, { type: mimeType });
 
-  // Run all 3 models in parallel — no waterfall, no fallbacks
-  const [r0, r1, r2] = await Promise.all(MODELS.map(m => queryModel(m.id, bytes, mimeType)));
-  const responses = [r0, r1, r2];
+  try {
+    console.log(`[Image][RUN] ${COLAB_IMAGE_URL}/analyze/image [models: ${AI_MODEL_ID}, ${FACE_MODEL_ID}]`);
+    const colab = await queryColabImage(forwardedFile);
 
-  const modelResults: {
-    model: string;
-    modelId: string;
-    verdict: 'FAKE' | 'REAL' | null;
-    confidence: number;
-    rawLabel: string;
-    ran: boolean;
-  }[] = [];
-
-  for (let i = 0; i < MODELS.length; i++) {
-    const res = responses[i];
-    if (!res || !Array.isArray(res) || res.length === 0) {
-      modelResults.push({ model: MODELS[i].name, modelId: MODELS[i].id, verdict: null, confidence: 0, rawLabel: 'ERROR', ran: false });
-      continue;
+    if (colab.verdict === 'ERROR') {
+      throw new Error(colab.error || 'Colab image model returned ERROR.');
     }
-    const top     = res[0];
-    const verdict = normalizeLabel(top.label);
-    const score   = top.score;
 
-    modelResults.push({
-      model:      MODELS[i].name,
-      modelId:    MODELS[i].id,
+    const faceFound = Boolean(colab.face_found);
+    const fakeScore = Math.round(colab.fake_probability ?? 50);
+    const realScore = Math.round(colab.real_probability ?? (100 - fakeScore));
+    const verdict = normalizeColabVerdict(colab.verdict, fakeScore);
+    const confidence = Math.round(colab.confidence ?? Math.max(fakeScore, realScore));
+
+    const aiFake = Math.round(colab.ai_fake_probability ?? fakeScore);
+    const aiVerdict = normalizeColabVerdict(colab.ai_verdict, aiFake);
+    const faceFake = Math.round(colab.face_fake_probability ?? 50);
+    const faceVerdict = faceFound ? normalizeColabVerdict(colab.face_verdict, faceFake) : null;
+
+    const modelResults: ModelResult[] = [
+      {
+        model: AI_MODEL_NAME,
+        modelId: AI_MODEL_ID,
+        verdict: aiVerdict,
+        confidence: Math.round(Math.max(aiFake, colab.ai_real_probability ?? (100 - aiFake))),
+        rawLabel: 'AI_GENERATED_IMAGE_CHECK',
+        ran: true,
+      },
+      {
+        model: FACE_MODEL_NAME,
+        modelId: FACE_MODEL_ID,
+        verdict: faceVerdict,
+        confidence: faceFound
+          ? Math.round(Math.max(faceFake, colab.face_real_probability ?? (100 - faceFake)))
+          : 0,
+        rawLabel: faceFound ? 'FACE_FORGERY_CHECK' : 'NO_FACE_DETECTED',
+        ran: faceFound,
+      },
+    ];
+
+    const report = await generateGeminiImageReport({
+      bytes,
+      mimeType,
       verdict,
-      confidence: Math.round(score * 100),
-      rawLabel:   top.label,
-      ran:        true,
+      fakeScore,
+      realScore,
+      faceFound,
+      modelResults,
+    });
+
+    console.log(`[Image][OK] verdict=${verdict} fakeScore=${fakeScore}% face=${faceFound}`);
+
+    return NextResponse.json({
+      verdict,
+      confidence,
+      fakeScore,
+      realScore,
+      modelsRan: modelResults.filter((model) => model.ran).length,
+      modelsFailed: modelResults.filter((model) => !model.ran).length,
+      models: modelResults,
+      report,
+      durationMs: Date.now() - startedAt,
+      face_found: faceFound,
+      face_box: colab.face_box ?? null,
+    });
+  } catch (error) {
+    console.error('[Image][FAIL]', error);
+    const errorLabel = `COLAB_ERROR: ${String(error).slice(0, 160)}`;
+    const modelResults: ModelResult[] = [
+      {
+        model: AI_MODEL_NAME,
+        modelId: AI_MODEL_ID,
+        verdict: null,
+        confidence: 0,
+        rawLabel: errorLabel,
+        ran: false,
+      },
+      {
+        model: FACE_MODEL_NAME,
+        modelId: FACE_MODEL_ID,
+        verdict: null,
+        confidence: 0,
+        rawLabel: errorLabel,
+        ran: false,
+      },
+    ];
+
+    return NextResponse.json({
+      verdict: 'UNCERTAIN',
+      confidence: 50,
+      fakeScore: 50,
+      realScore: 50,
+      modelsRan: 0,
+      modelsFailed: modelResults.length,
+      models: modelResults,
+      report: fallbackReport('UNCERTAIN', 50, false),
+      durationMs: Date.now() - startedAt,
+      error: String(error),
     });
   }
-
-  const successfulRuns = modelResults.filter(r => r.ran).length;
-
-  // ── Fallback if all sub-models failed (e.g. offline HF API) ───────────────
-  if (successfulRuns === 0) {
-    console.log('[Image] HuggingFace models offline/failed. Routing to Gemini fallback forensic analyzer...');
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: [{
-          parts: [
-            { inlineData: { mimeType, data: Buffer.from(bytes).toString('base64') } },
-            { text: GEMINI_IMAGE_PROMPT }
-          ]
-        }]
-      });
-
-      const text = (response.text ?? '').trim().replace(/^```json\s*/i, '').replace(/\s*```$/i, '').trim();
-      const parsed = JSON.parse(text) as {
-        verdict: 'REAL' | 'FAKE' | 'SUSPICIOUS';
-        confidence: number;
-        reasons: string[];
-        visual_artifacts: string[];
-        details: string;
-      };
-
-      console.log(`[Image][Fallback] Gemini forensic result: verdict=${parsed.verdict} confidence=${parsed.confidence}%`);
-
-      // Mock sub-model results using Gemini forensic findings
-      const fallbackResults = MODELS.map(m => ({
-        model: m.name,
-        modelId: m.id,
-        verdict: parsed.verdict,
-        confidence: parsed.confidence,
-        rawLabel: `GEMINI_FALLBACK_${parsed.verdict}`,
-        ran: true
-      }));
-
-      const fakeVal = parsed.verdict === 'FAKE' ? parsed.confidence : parsed.verdict === 'REAL' ? 100 - parsed.confidence : 50;
-      const realVal = parsed.verdict === 'REAL' ? parsed.confidence : parsed.verdict === 'FAKE' ? 100 - parsed.confidence : 50;
-
-      console.log('══════ [TruthLens/Image] Fallback Done ══════\n');
-
-      return NextResponse.json({
-        verdict:        parsed.verdict,
-        confidence:     parsed.confidence,
-        fakeScore:      fakeVal,
-        realScore:      realVal,
-        modelsRan:      1,
-        modelsFailed:   MODELS.length,
-        models:         fallbackResults,
-        durationMs:     Date.now() - startTime,
-        report: {
-          verdict_sentence:
-            parsed.verdict === 'FAKE'
-              ? 'This image appears AI-generated.'
-              : parsed.verdict === 'SUSPICIOUS'
-                ? 'This image has suspicious forensic signals.'
-                : 'This image appears authentic.',
-          plain_language_explanation: parsed.details,
-          recommended_action:
-            parsed.verdict === 'REAL'
-              ? 'The image appears low risk, but important content should still be checked against trusted sources.'
-              : 'Do not use this image as evidence until it is verified with the original source.',
-          suggested_scenario:
-            parsed.verdict === 'REAL'
-              ? 'Likely authentic image.'
-              : 'Potential AI-generated or manipulated image.',
-          visual_artifacts: parsed.visual_artifacts ?? parsed.reasons ?? [],
-        },
-        notes:          `Hugging Face sub-models were offline. Fallback forensic analysis was performed by Gemini. Details: ${parsed.details}`
-      });
-    } catch (e) {
-      console.error('[Image][Fallback] Gemini image fallback failed:', e);
-      return NextResponse.json({
-        verdict:        'UNCERTAIN',
-        confidence:     50,
-        fakeScore:      50,
-        realScore:      50,
-        modelsRan:      0,
-        modelsFailed:   MODELS.length,
-        models:         modelResults,
-        durationMs:     Date.now() - startTime,
-        error:          `All sub-models failed and fallback was unavailable: ${String(e)}`
-      });
-    }
-  }
-
-  // ── Aggregate (Consensus-Based) ───────────────────────────────────────────
-  let fakeScore = 0;
-  let realScore = 0;
-  let finalVerdict: 'FAKE' | 'REAL' | 'SUSPICIOUS' | 'UNCERTAIN';
-  const fakeVotes = modelResults.filter(r => r.verdict === 'FAKE').length;
-
-  if (fakeVotes >= 2) {
-    finalVerdict = 'FAKE';
-    // Consensus fake score: weighted average of the models that voted FAKE
-    const fakeModels = modelResults.filter(r => r.verdict === 'FAKE');
-    const totalFakeWeight = fakeModels.reduce((sum, r) => {
-      const m = MODELS.find(x => x.id === r.modelId);
-      return sum + (m ? m.weight : 1.0);
-    }, 0);
-    const weightedFakeSum = fakeModels.reduce((sum, r) => {
-      const m = MODELS.find(x => x.id === r.modelId);
-      return sum + (r.confidence * (m ? m.weight : 1.0));
-    }, 0);
-    fakeScore = totalFakeWeight > 0 ? weightedFakeSum / totalFakeWeight : 0;
-    realScore = 100 - fakeScore;
-  } else if (fakeVotes === 0) {
-    finalVerdict = 'REAL';
-    // Consensus real score: weighted average of the models that voted REAL
-    const realModels = modelResults.filter(r => r.verdict === 'REAL');
-    const totalRealWeight = realModels.reduce((sum, r) => {
-      const m = MODELS.find(x => x.id === r.modelId);
-      return sum + (m ? m.weight : 1.0);
-    }, 0);
-    const weightedRealSum = realModels.reduce((sum, r) => {
-      const m = MODELS.find(x => x.id === r.modelId);
-      return sum + (r.confidence * (m ? m.weight : 1.0));
-    }, 0);
-    realScore = totalRealWeight > 0 ? weightedRealSum / totalRealWeight : 0;
-    fakeScore = 100 - realScore;
-  } else {
-    // SUSPICIOUS (mixed votes, e.g. 1 FAKE and 2 REAL)
-    finalVerdict = 'SUSPICIOUS';
-    // Probability of AI generation is the weighted average across all models
-    let weightedFakeProbSum = 0;
-    let totalWeight = 0;
-    for (let i = 0; i < MODELS.length; i++) {
-      const mr = modelResults[i];
-      if (!mr.ran) continue;
-      const weight = MODELS[i].weight;
-      const fakeProb = mr.verdict === 'FAKE' ? mr.confidence : 100 - mr.confidence;
-      weightedFakeProbSum += fakeProb * weight;
-      totalWeight += weight;
-    }
-    fakeScore = totalWeight > 0 ? weightedFakeProbSum / totalWeight : 50;
-    realScore = 100 - fakeScore;
-  }
-
-  const confidence = Math.round(Math.max(fakeScore, realScore));
-
-  console.log(
-    `[Image] verdict=${finalVerdict} fakeScore=${fakeScore.toFixed(1)}% ` +
-    `fakeVotes=${fakeVotes}/${successfulRuns} ran in ${Date.now() - startTime}ms`,
-  );
-  console.log('══════ [TruthLens/Image] Done ══════\n');
-
-  const report = await generateGeminiImageReport({
-    bytes,
-    mimeType,
-    verdict: finalVerdict,
-    fakeScore,
-    realScore,
-    modelsRan: successfulRuns,
-    modelResults,
-  });
-
-  return NextResponse.json({
-    verdict:        finalVerdict,
-    confidence:     confidence,
-    fakeScore:      Math.round(fakeScore),
-    realScore:      Math.round(realScore),
-    modelsRan:      successfulRuns,
-    modelsFailed:   MODELS.length - successfulRuns,
-    models:         modelResults,
-    report,
-    durationMs:     Date.now() - startTime,
-  });
 }

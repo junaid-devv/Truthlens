@@ -25,6 +25,9 @@ export interface ImageAnalysisResponse {
     recommended_action?: string;
     suggested_scenario?: string;
     visual_artifacts?: string[];
+    source_match?: string;
+    source_interpretation?: string;
+    source?: 'gemini' | 'fallback';
   };
 }
 
@@ -129,9 +132,9 @@ export function adaptImageResult(
 
   const artifacts = [...(r.report?.visual_artifacts ?? [])];
   if (r.verdict === 'FAKE' || r.verdict === 'SUSPICIOUS') {
-    if (r.fakeScore > 70) artifacts.push('Strong AI-generation fingerprint detected');
+    if (r.fakeScore > 70) artifacts.push('Strong AI-generation or manipulation signal detected');
     if (r.modelsRan >= 2 && r.models.filter((m) => m.verdict === 'FAKE').length >= 2) {
-      artifacts.push('Multiple independent models agree on manipulation');
+      artifacts.push('Multiple detectors agree on manipulation');
     }
   }
 
@@ -145,21 +148,21 @@ export function adaptImageResult(
 
   const fallbackSuggestedScenario =
     r.verdict === 'FAKE'
-      ? 'This image appears to have been generated or manipulated by AI.'
+      ? 'This image appears to be AI-generated or manipulated.'
       : r.verdict === 'SUSPICIOUS'
-        ? 'This image shows some signs of AI manipulation. Verify carefully.'
+        ? 'This image shows possible AI-generation or manipulation signals. Verify carefully.'
         : 'This image appears to be an authentic photograph.';
 
   const fallbackPlainLanguage =
     r.verdict === 'FAKE'
-      ? `${r.modelsRan} AI detection system${r.modelsRan > 1 ? 's' : ''} identified this image as AI-generated with ${r.fakeScore}% certainty. Do not trust this image without verification.`
+      ? `${r.modelsRan} image detection system${r.modelsRan > 1 ? 's' : ''} identified AI-generation or manipulation evidence with ${r.fakeScore}% certainty. Do not trust this image without verification.`
       : r.verdict === 'SUSPICIOUS'
-        ? 'Some AI detection signals were found but results were mixed. Treat this image with caution.'
-        : `${r.modelsRan} detection system${r.modelsRan > 1 ? 's' : ''} found no signs of AI generation. The image appears authentic.`;
+        ? 'Some image-forgery signals were found but the result is not conclusive. Treat this image with caution.'
+        : `${r.modelsRan} detection system${r.modelsRan > 1 ? 's' : ''} found no strong AI-generation or manipulation signal. The image appears authentic.`;
 
   const fallbackVerdictSentence =
     r.verdict === 'FAKE'
-      ? 'This image is AI-generated and should not be trusted.'
+      ? 'This image shows signs of AI generation or manipulation.'
       : r.verdict === 'SUSPICIOUS'
         ? 'This image shows suspicious signs and warrants further scrutiny.'
         : r.verdict === 'REAL'
@@ -200,11 +203,17 @@ export function adaptImageResult(
     content_classification: {
       likely_type: 'Image Content',
       confidence: r.confidence,
-      matched_scenario: r.verdict === 'FAKE' ? 'AI-Generated Image' : 'Authentic Photograph',
+      matched_scenario: r.verdict === 'FAKE' ? 'AI-Generated / Manipulated Image' : 'Authentic Photograph',
       contradiction_level: 'none',
       key_entities: [meta.fileName],
     },
-    face_check: { match: 'No strong match', interpretation: 'Verify with source', heatmap_zones: zones },
+    face_check: {
+      match: r.report?.source_match ?? 'Identity not verified',
+      interpretation:
+        r.report?.source_interpretation ??
+        'No public-figure identity matching is connected. Verify any claimed identity with original source media.',
+      heatmap_zones: zones,
+    },
     suggested_scenario: r.report?.suggested_scenario ?? fallbackSuggestedScenario,
     plain_language_explanation: r.report?.plain_language_explanation ?? fallbackPlainLanguage,
     verdict_sentence: r.report?.verdict_sentence ?? fallbackVerdictSentence,

@@ -50,6 +50,14 @@ function ProgressBar({ value, color }: { value: number; color: string }) {
   );
 }
 
+function getDisplayVerdictLabel(result: AnalysisResult): string {
+  if (result.fileType === "image") {
+    if (result.overall_verdict === "FAKE") return "AI / Manipulated";
+    if (result.overall_verdict === "LIKELY_FAKE") return "Likely AI / Manipulated";
+  }
+  return getVerdictLabel(result.overall_verdict);
+}
+
 export default function ResultsPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("Overview");
@@ -68,7 +76,7 @@ export default function ResultsPage() {
   });
 
   useEffect(() => {
-    if (!result || result.error) router.replace("/upload");
+    if (!result) router.replace("/upload");
   }, [result, router]);
 
   useEffect(() => {
@@ -80,7 +88,7 @@ export default function ResultsPage() {
     [result],
   );
 
-  if (!result || result.error) {
+  if (!result) {
     return (
       <>
         <Navbar />
@@ -92,6 +100,51 @@ export default function ResultsPage() {
             <div className="icon-button spin" style={{ width: 44, height: 44 }}>
               <RefreshCw size={18} />
             </div>
+          </main>
+        </div>
+      </>
+    );
+  }
+
+  if (result.error) {
+    return (
+      <>
+        <Navbar />
+        <div className="page-content">
+          <main
+            className="page-container"
+            style={{ display: "grid", placeItems: "center", minHeight: "70vh" }}
+          >
+            <section className="surface stack-md" style={{ maxWidth: 720, padding: 28 }}>
+              <span className="pill pill-danger" style={{ alignSelf: "flex-start" }}>
+                Analysis failed
+              </span>
+              <div>
+                <h1 className="page-title" style={{ fontSize: "2rem", margin: 0 }}>
+                  The forensic pipeline could not complete.
+                </h1>
+                <p className="page-subtitle" style={{ marginTop: 10 }}>
+                  {result.plain_language_explanation ||
+                    result.verdict_sentence ||
+                    "The model server or Gemini request failed before a result was produced."}
+                </p>
+              </div>
+              <div className="surface-muted" style={{ padding: 16 }}>
+                <div className="label">Analysis ID</div>
+                <div className="mono" style={{ marginTop: 6, overflowWrap: "anywhere" }}>
+                  {result.analysisId || "-"}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <Link href="/processing" className="button button-primary">
+                  <RefreshCw size={15} />
+                  Retry
+                </Link>
+                <Link href="/upload" className="button button-secondary">
+                  New Scan
+                </Link>
+              </div>
+            </section>
           </main>
         </div>
       </>
@@ -113,7 +166,9 @@ export default function ResultsPage() {
     : result.probability_ai_generated;
   const scoreLabel = isAuthenticOrUncertain
     ? "Authenticity probability"
-    : "AI generation probability";
+    : result.fileType === "image"
+      ? "AI / manipulation probability"
+      : "AI generation probability";
   const riskPillClass =
     result.risk_level === "critical" || result.risk_level === "high"
       ? "pill-danger"
@@ -124,7 +179,7 @@ export default function ResultsPage() {
   const evidenceStats = [
     {
       label: "Verdict",
-      value: getVerdictLabel(result.overall_verdict),
+      value: getDisplayVerdictLabel(result),
       color: verdictColor,
     },
     {
@@ -145,7 +200,6 @@ export default function ResultsPage() {
   ];
 
   const overviewCells = [
-    { label: "Source evidence", value: result.fileName },
     { label: "Matched scenario", value: result.content_classification.matched_scenario },
     { label: "Likely content type", value: result.content_classification.likely_type || "-" },
     { label: "Suggested scenario", value: result.suggested_scenario },
@@ -211,7 +265,7 @@ export default function ResultsPage() {
                     {result.risk_level} risk
                   </span>
                   <span className="pill pill-accent">
-                    {getVerdictLabel(result.overall_verdict)}
+                    {getDisplayVerdictLabel(result)}
                   </span>
                 </div>
 

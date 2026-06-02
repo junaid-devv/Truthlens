@@ -30,7 +30,7 @@ function MediaPreview({
     <div
       style={{
         position: "relative",
-        minHeight: 300,
+        height: 300,
         border: "1px solid var(--line)",
         borderRadius: "var(--r)",
         background: "rgba(6,17,29,0.72)",
@@ -51,10 +51,10 @@ function MediaPreview({
           <Image
             src={imageUrl}
             alt="Analyzed media"
-            width={720}
-            height={300}
+            fill
+            sizes="(max-width: 900px) 100vw, 50vw"
             unoptimized
-            style={{ width: "100%", height: 300, objectFit: "contain", opacity: 0.72 }}
+            style={{ objectFit: "contain", opacity: 0.72 }}
           />
         )
       ) : (
@@ -134,14 +134,26 @@ export default function ImageTab({
                     : m.verdict === "REAL"
                       ? "var(--success)"
                       : "var(--text-2)";
+                const status = m.ran
+                  ? `${m.confidence}% ${m.verdict ?? "UNKNOWN"}`
+                  : m.rawLabel === "NO_FACE_DETECTED"
+                    ? "Skipped"
+                    : m.rawLabel?.includes("ERROR")
+                      ? "Error"
+                      : "Unavailable";
                 return (
                   <div key={m.modelId} className="data-row">
                     <span style={{ minWidth: 0 }}>
                       <span style={{ display: "block", fontWeight: 750 }}>{m.model}</span>
                       <span className="mono label">{m.modelId}</span>
+                      {!m.ran && m.rawLabel && (
+                        <span className="mono label" style={{ display: "block", marginTop: 4, overflowWrap: "anywhere" }}>
+                          {m.rawLabel}
+                        </span>
+                      )}
                     </span>
                     <span className="value" style={{ color }}>
-                      {m.ran ? `${m.confidence}% ${m.verdict ?? "UNKNOWN"}` : "Offline"}
+                      {status}
                     </span>
                   </div>
                 );
@@ -168,12 +180,12 @@ export default function ImageTab({
         </div>
 
         <div className="surface-muted" style={{ padding: 22 }}>
-          <div style={{ fontWeight: 850, marginBottom: 14 }}>Face/source check</div>
+          <div style={{ fontWeight: 850, marginBottom: 14 }}>Source risk check</div>
           <div className="summary-grid">
             <div className="summary-cell">
-              <div className="label">Public match</div>
+              <div className="label">Identity status</div>
               <div style={{ marginTop: 8, fontWeight: 850 }}>
-                {result.face_check?.match || "No strong match"}
+                {result.face_check?.match || "Identity not verified"}
               </div>
             </div>
             <div className="summary-cell">
