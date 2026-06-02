@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
+import sharp from 'sharp';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 const COLAB_IMAGE_URL = (
@@ -321,6 +322,13 @@ export async function POST(req: NextRequest) {
       durationMs: Date.now() - startedAt,
       face_found: faceFound,
       face_box: colab.face_box ?? null,
+      image_dimensions: await sharp(Buffer.from(bytes))
+        .metadata()
+        .then((metadata) => ({
+          width: metadata.width ?? null,
+          height: metadata.height ?? null,
+        }))
+        .catch(() => ({ width: null, height: null })),
     });
   } catch (error) {
     console.error('[Image][FAIL]', error);

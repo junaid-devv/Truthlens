@@ -19,6 +19,12 @@ export interface ImageAnalysisResponse {
   models: ModelResult[];
   durationMs: number;
   error?: string;
+  face_found?: boolean;
+  face_box?: [number, number, number, number] | null;
+  image_dimensions?: {
+    width: number | null;
+    height: number | null;
+  };
   report?: {
     verdict_sentence?: string;
     plain_language_explanation?: string;
@@ -138,14 +144,6 @@ export function adaptImageResult(
     }
   }
 
-  const zones =
-    r.verdict === 'FAKE' || r.verdict === 'SUSPICIOUS'
-      ? [
-          { top: '32%', left: '38%', size: 105, opacity: Math.min(0.85, 0.4 + prob / 200) },
-          { top: '50%', left: '44%', size: 85, opacity: Math.min(0.68, 0.32 + prob / 250) },
-        ]
-      : [];
-
   const fallbackSuggestedScenario =
     r.verdict === 'FAKE'
       ? 'This image appears to be AI-generated or manipulated.'
@@ -212,7 +210,18 @@ export function adaptImageResult(
       interpretation:
         r.report?.source_interpretation ??
         'No public-figure identity matching is connected. Verify any claimed identity with original source media.',
-      heatmap_zones: zones,
+      detected_box:
+        r.face_box && r.image_dimensions?.width && r.image_dimensions?.height
+          ? {
+              x1: r.face_box[0],
+              y1: r.face_box[1],
+              x2: r.face_box[2],
+              y2: r.face_box[3],
+              imageWidth: r.image_dimensions.width,
+              imageHeight: r.image_dimensions.height,
+            }
+          : null,
+      heatmap_zones: [],
     },
     suggested_scenario: r.report?.suggested_scenario ?? fallbackSuggestedScenario,
     plain_language_explanation: r.report?.plain_language_explanation ?? fallbackPlainLanguage,

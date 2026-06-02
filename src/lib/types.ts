@@ -26,6 +26,14 @@ export interface AnalysisResult {
   face_check?: {
     match: string;
     interpretation: string;
+    detected_box?: {
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      imageWidth: number;
+      imageHeight: number;
+    } | null;
     heatmap_zones?: {
       top: string;
       left?: string;
